@@ -1,0 +1,14 @@
+.wrap { grid-column: span 2; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tag {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.tagLlm      { color: var(--accent); border-color: #3a3d6b; background: #1c1e3b; }
+.tagFallback { color: var(--red);    border-color: #3d1c1c; background: #2a1010; }

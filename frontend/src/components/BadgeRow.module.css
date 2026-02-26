@@ -1,0 +1,22 @@
+.row {
+  grid-column: span 2;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.badge {
+  font-size: 11px;
+  font-family: var(--mono);
+  padding: 3px 9px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.used           { color: var(--green);  border-color: #1a4032; background: #0c2920; }
+.skipped        { color: var(--muted); }
+.failed_fallback{ color: var(--red);   border-color: #3d1c1c; background: #2a1010; }
+.simOk          { color: var(--green);  border-color: #1a4032; background: #0c2920; }
+.simWarn        { color: var(--amber);  border-color: #3d2e0c; background: #2a1f08; }

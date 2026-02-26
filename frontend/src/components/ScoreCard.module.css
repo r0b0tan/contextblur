@@ -1,0 +1,44 @@
+.card {
+  grid-column: span 2;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.num {
+  font-size: 52px;
+  font-weight: 800;
+  font-family: var(--mono);
+  line-height: 1;
+  min-width: 90px;
+  letter-spacing: -2px;
+}
+
+.right { flex: 1; }
+
+.lbl {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.bar {
+  height: 7px;
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.barFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+
+.sub { font-size: 10px; color: var(--muted); margin-top: 6px; }

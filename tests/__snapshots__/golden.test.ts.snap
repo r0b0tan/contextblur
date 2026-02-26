@@ -1,0 +1,56 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden — de_text1 strength 2 > metrics delta matches snapshot 1`] = `
+{
+  "avgSentenceLengthTokens": 0.4,
+  "basicNgramUniqueness": -0.0167,
+  "hapaxRate": -0.122,
+  "punctuationRate": -0.0032,
+  "rareWordRate": -0.0446,
+  "sentenceCount": 0,
+  "stdevSentenceLengthTokens": 0.3448,
+  "stopwordRate": 0.0516,
+  "typeTokenRatio": -0.0597,
+}
+`;
+
+exports[`golden — de_text1 strength 2 > trace.applied matches snapshot 1`] = `
+[
+  "syntax_normalization",
+  "entity_generalization",
+  "numbers_bucketing",
+  "context_dampening",
+]
+`;
+
+exports[`golden — de_text1 strength 2 > uniquenessReductionScore matches snapshot 1`] = `7.45`;
+
+exports[`golden — de_text2 strength 3 > metrics delta matches snapshot 1`] = `
+{
+  "avgSentenceLengthTokens": 0.2,
+  "basicNgramUniqueness": -0.0556,
+  "hapaxRate": -0.1402,
+  "punctuationRate": -0.038,
+  "rareWordRate": -0.0675,
+  "sentenceCount": 0,
+  "stdevSentenceLengthTokens": -0.4378,
+  "stopwordRate": 0.048,
+  "typeTokenRatio": -0.0698,
+}
+`;
+
+exports[`golden — en_text1 strength 2 > metrics delta matches snapshot 1`] = `
+{
+  "avgSentenceLengthTokens": 0.8,
+  "basicNgramUniqueness": -0.0469,
+  "hapaxRate": -0.1794,
+  "punctuationRate": -0.0059,
+  "rareWordRate": -0.216,
+  "sentenceCount": 0,
+  "stdevSentenceLengthTokens": -0.0131,
+  "stopwordRate": 0.0323,
+  "typeTokenRatio": -0.1095,
+}
+`;
+
+exports[`golden — en_text1 strength 2 > uniquenessReductionScore matches snapshot 1`] = `16.49`;

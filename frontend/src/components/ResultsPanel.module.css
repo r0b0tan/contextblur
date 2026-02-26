@@ -1,0 +1,69 @@
+.panel {
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 18px;
+  flex: 1;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  gap: 8px;
+  text-align: center;
+}
+.emptyIcon { font-size: 32px; opacity: .3; }
+.emptyHint { font-size: 12px; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.cardSpan { grid-column: span 2; }
+
+.cardTitle {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.originalText {
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+
+.noChange {
+  grid-column: span 2;
+  background: #2a2010;
+  border: 1px solid #4a3a10;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--amber);
+}
+
+.errBox {
+  background: #2a1010;
+  border: 1px solid #5c2020;
+  border-radius: 6px;
+  padding: 14px;
+  font-size: 13px;
+  color: var(--red);
+}

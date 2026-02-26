@@ -1,0 +1,38 @@
+.details {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.summary {
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.summary::-webkit-details-marker { display: none; }
+
+.caret { font-size: 9px; transition: transform .15s; }
+.details[open] .caret { transform: rotate(90deg); }
+
+.body { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+
+.toggleRow { display: flex; align-items: center; gap: 8px; }
+.toggleRow label {
+  margin: 0;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 400;
+}
+input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+.statusTxt { font-size: 10px; text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 4px; }

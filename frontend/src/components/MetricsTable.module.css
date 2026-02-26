@@ -1,0 +1,8 @@
+.wrap { grid-column: span 2; }
+
+.mn { color: var(--muted); font-size: 11px; font-family: var(--sans); }
+.nr { text-align: right; }
+.dl { text-align: right; }
+.dn { color: var(--green); }
+.dp { color: var(--red); }
+.dz { color: var(--muted); }
