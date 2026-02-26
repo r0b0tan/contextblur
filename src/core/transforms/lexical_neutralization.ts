@@ -1,4 +1,4 @@
-import type { Transform, Language } from '../types.js';
+import type { Transform, Language, TransformResult } from '../types.js';
 
 // Strength 3: replace only high-intensity or rare evaluative words with neutral equivalents.
 // Static list — no model, no external lookup.
@@ -73,17 +73,22 @@ function preserveCase(original: string, replacement: string): string {
 export const lexicalNeutralization: Transform = {
   name: 'lexical_neutralization',
 
-  apply(text: string, language: Language): string {
+  apply(text: string, language: Language): TransformResult {
+    const spans: TransformResult['spans'] = [];
     const synonyms = language === 'de' ? SYNONYMS_DE : SYNONYMS_EN;
     let result = text;
 
     for (const [rare, neutral] of Object.entries(synonyms)) {
       result = result.replace(
         new RegExp(`\\b${escapeRegex(rare)}\\b`, 'gi'),
-        (match) => preserveCase(match, neutral),
+        (match) => {
+          const rep = preserveCase(match, neutral);
+          spans.push({ originalFragment: match, replacedWith: rep, transform: 'lexical_neutralization', strength: 3 });
+          return rep;
+        },
       );
     }
 
-    return result;
+    return { text: result, spans };
   },
 };

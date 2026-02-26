@@ -1,125 +1,96 @@
-import type { Language, Strength, LLMProvider } from '../types';
-import { SAMPLES, STR_DESC } from '../constants';
-import { SegmentedControl } from './SegmentedControl';
-import { LLMAccordion } from './LLMAccordion';
+import type { Language, TransformResponse } from '../types';
+import { SAMPLES } from '../constants';
 import styles from './InputPanel.module.css';
-
-type ModelsStatus = 'idle' | 'loading' | 'ok' | 'error';
 
 interface Props {
   text: string;
   lang: Language;
-  strength: Strength;
-  llmEnabled: boolean;
-  llmProvider: LLMProvider;
-  ollamaModel: string;
-  ollamaEmbedModel: string;
-  oaiBaseUrl: string;
-  oaiApiKey: string;
-  oaiModel: string;
-  oaiEmbedModel: string;
-  models: string[];
-  modelsStatus: ModelsStatus;
-  submitting: boolean;
+  result: TransformResponse | null;
   onTextChange: (t: string) => void;
   onLangChange: (l: Language) => void;
-  onStrengthChange: (s: Strength) => void;
-  onLLMEnabledChange: (v: boolean) => void;
-  onLLMProviderChange: (v: LLMProvider) => void;
-  onOllamaModelChange: (v: string) => void;
-  onOllamaEmbedChange: (v: string) => void;
-  onOaiChange: (field: 'baseUrl' | 'apiKey' | 'model' | 'embedModel', v: string) => void;
-  onLoadModels: () => void;
-  onSubmit: () => void;
 }
 
-const LANG_OPTIONS = [
-  { value: 'de' as const, label: 'DE', sublabel: 'Deutsch' },
-  { value: 'en' as const, label: 'EN', sublabel: 'English' },
+const METRIC_ROWS: { key: keyof TransformResponse['metricsBefore']; label: string }[] = [
+  { key: 'hapaxRate',                  label: 'HAPAX RATE' },
+  { key: 'rareWordRate',               label: 'RARE WORD RATE' },
+  { key: 'typeTokenRatio',             label: 'TYPE-TOKEN RATIO' },
+  { key: 'stdevSentenceLengthTokens',  label: 'SENT LENGTH σ' },
+  { key: 'punctuationRate',            label: 'PUNCT RATE' },
+  { key: 'basicNgramUniqueness',       label: 'N-GRAM UNIQ.' },
 ];
 
-const STR_OPTIONS = [
-  { value: 0 as const, label: '0', sublabel: 'Syntax' },
-  { value: 1 as const, label: '1', sublabel: 'Entitäten' },
-  { value: 2 as const, label: '2', sublabel: 'Kontext' },
-  { value: 3 as const, label: '3', sublabel: 'Lexik' },
-];
+function tokenCount(text: string): number {
+  return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+}
 
-export function InputPanel({
-  text, lang, strength,
-  llmEnabled, llmProvider,
-  ollamaModel, ollamaEmbedModel,
-  oaiBaseUrl, oaiApiKey, oaiModel, oaiEmbedModel,
-  models, modelsStatus, submitting,
-  onTextChange, onLangChange, onStrengthChange,
-  onLLMEnabledChange, onLLMProviderChange,
-  onOllamaModelChange, onOllamaEmbedChange,
-  onOaiChange, onLoadModels, onSubmit,
-}: Props) {
-  const desc = STR_DESC[strength];
+export function InputPanel({ text, lang, result, onTextChange, onLangChange }: Props) {
+  const metrics = result?.metricsBefore ?? null;
+  const tokens  = tokenCount(text);
 
   return (
     <div className={styles.panel}>
-      <div>
-        <label>
-          Text
-          <span style={{ color: 'var(--border)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> — </span>
-          <span
-            style={{ color: 'var(--accent)', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11, cursor: 'pointer' }}
+
+      {/* ── Section: Input ───────────────────────────────────────────────── */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionLabel}>INPUT</span>
+          <button
+            className={styles.sampleBtn}
             onClick={() => onTextChange(SAMPLES[lang])}
+            type="button"
           >
-            Beispieltext laden ↓
-          </span>
-        </label>
-        <div className={styles.textareaWrap}>
-          <textarea
-            className={styles.textarea}
-            value={text}
-            onChange={e => onTextChange(e.target.value)}
-            placeholder={"Eigenen Text einfügen oder Beispieltext laden…\n\nStrg+Enter zum Transformieren"}
-            onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); onSubmit(); } }}
-          />
+            Load sample ↓
+          </button>
+        </div>
+
+        <textarea
+          className={styles.textarea}
+          value={text}
+          onChange={(e) => onTextChange(e.target.value)}
+          placeholder={`Paste target text.\nEN or DE.`}
+          rows={12}
+        />
+
+        <div className={styles.metaRow}>
+          <div className={styles.chip}>
+            <span className={styles.chipLabel}>Tokens</span>
+            <span className={styles.chipValue}>{tokens > 0 ? tokens : '—'}</span>
+          </div>
+          <div className={styles.langToggle}>
+            {(['de', 'en'] as Language[]).map((l) => (
+              <button
+                key={l}
+                className={`${styles.langBtn} ${l === lang ? styles.langBtnActive : ''}`}
+                onClick={() => onLangChange(l)}
+                type="button"
+              >
+                {l.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div>
-        <label>Sprache</label>
-        <SegmentedControl options={LANG_OPTIONS} value={lang} onChange={onLangChange} />
-      </div>
+      <div className={styles.divider} />
 
-      <div>
-        <label>Stärke</label>
-        <SegmentedControl options={STR_OPTIONS} value={strength} onChange={onStrengthChange} />
-        <div className={styles.strDesc}>
-          <strong>{desc.label}:</strong> {desc.detail}
+      {/* ── Section: Baseline Feature Snapshot ───────────────────────────── */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionLabel}>BASELINE FEATURES</span>
         </div>
-      </div>
 
-      <LLMAccordion
-        enabled={llmEnabled}
-        provider={llmProvider}
-        models={models}
-        modelsStatus={modelsStatus}
-        ollamaModel={ollamaModel}
-        ollamaEmbedModel={ollamaEmbedModel}
-        oaiBaseUrl={oaiBaseUrl}
-        oaiApiKey={oaiApiKey}
-        oaiModel={oaiModel}
-        oaiEmbedModel={oaiEmbedModel}
-        onEnabledChange={onLLMEnabledChange}
-        onProviderChange={onLLMProviderChange}
-        onOllamaModelChange={onOllamaModelChange}
-        onOllamaEmbedChange={onOllamaEmbedChange}
-        onOaiChange={onOaiChange}
-        onLoadModels={onLoadModels}
-      />
-
-      <div className={styles.submitWrap}>
-        <button className={styles.btnPrimary} onClick={onSubmit} disabled={submitting} type="button">
-          {submitting && <span className={styles.spinner} />}
-          {submitting ? 'Verarbeite…' : 'Transformieren'}
-        </button>
-        <div className={styles.shortcut}>Strg + Enter</div>
+        <div className={styles.metricList}>
+          {METRIC_ROWS.map(({ key, label }) => (
+            <div key={key} className={styles.metricRow}>
+              <span className={styles.metricLabel}>{label}</span>
+              <span className={styles.metricValue}>
+                {metrics != null
+                  ? (metrics[key] as number).toFixed(3)
+                  : '—'}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

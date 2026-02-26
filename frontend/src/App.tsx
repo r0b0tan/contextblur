@@ -1,143 +1,188 @@
 import { useState, useCallback } from 'react';
-import type { Language, Strength, LLMProvider, TransformResponse } from './types';
-import { fetchModels, postTransform } from './api';
+import type {
+  Language, Strength, LLMProvider, TransformResponse, CurvePoint,
+} from './types';
+import { postTransform } from './api';
 import { InputPanel } from './components/InputPanel';
-import { ResultsPanel } from './components/ResultsPanel';
-
-type ModelsStatus = 'idle' | 'loading' | 'ok' | 'error';
-
-const HEADER_CSS: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 10,
-  padding: '12px 22px', borderBottom: '1px solid var(--border)',
-  background: 'var(--surface)', flexShrink: 0,
-};
-const TAG_CSS: React.CSSProperties = {
-  fontSize: 10, fontFamily: 'var(--mono)', padding: '2px 7px',
-  borderRadius: 3, background: '#1a1d2e', border: '1px solid var(--border)',
-  color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.8px',
-};
-const MAIN_CSS: React.CSSProperties = {
-  display: 'flex', flex: 1, overflow: 'hidden',
-};
+import { CenterPanel } from './components/CenterPanel';
+import { FeatureDeltaPanel } from './components/FeatureDeltaPanel';
+import { ThreatModelDropdown } from './components/ThreatModelDropdown';
+import styles from './App.module.css';
 
 export default function App() {
-  // Form state
-  const [text, setText]               = useState('');
-  const [lang, setLang]               = useState<Language>('de');
-  const [strength, setStrength]       = useState<Strength>(1);
-  const [llmEnabled, setLlmEnabled]   = useState(false);
-  const [llmProvider, setLlmProvider] = useState<LLMProvider>('ollama');
-  const [ollamaModel, setOllamaModel] = useState('');
-  const [ollamaEmbed, setOllamaEmbed] = useState('');
-  const [oaiBaseUrl, setOaiBaseUrl]   = useState('http://localhost:1234');
-  const [oaiApiKey, setOaiApiKey]     = useState('');
-  const [oaiModel, setOaiModel]       = useState('');
-  const [oaiEmbed, setOaiEmbed]       = useState('');
+  // ── Input state ───────────────────────────────────────────────────────────
+  const [text, setText]         = useState('');
+  const [lang, setLang]         = useState<Language>('de');
+  const [strength, setStrength] = useState<Strength>(2);
 
-  // Model discovery
-  const [models, setModels]               = useState<string[]>([]);
-  const [modelsStatus, setModelsStatus]   = useState<ModelsStatus>('idle');
-  const [modelsLoaded, setModelsLoaded]   = useState(false);
+  // ── LLM config ────────────────────────────────────────────────────────────
+  const [llmEnabled, setLlmEnabled]     = useState(false);
+  const [llmProvider, setLlmProvider]   = useState<LLMProvider>('ollama');
+  const [ollamaModel, setOllamaModel]   = useState('');
+  const [ollamaEmbed, setOllamaEmbed]   = useState('');
+  const [oaiBaseUrl, setOaiBaseUrl]     = useState('http://localhost:1234');
+  const [oaiApiKey, setOaiApiKey]       = useState('');
+  const [oaiModel, setOaiModel]         = useState('');
+  const [oaiEmbed, setOaiEmbed]         = useState('');
+  const [models, setModels]             = useState<string[]>([]);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
-  // Results
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult]         = useState<TransformResponse | null>(null);
-  const [usedModel, setUsedModel]   = useState<string>('');
-  const [error, setError]           = useState<string | null>(null);
+  // ── View state ────────────────────────────────────────────────────────────
+  const [heatmapMode, setHeatmapMode] = useState<'delta' | 'risk'>('delta');
 
+  // ── Results ───────────────────────────────────────────────────────────────
+  const [result, setResult]   = useState<TransformResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  // ── Tradeoff curve ────────────────────────────────────────────────────────
+  const [curveData, setCurveData]           = useState<CurvePoint[] | null>(null);
+  const [computingCurve, setComputingCurve] = useState(false);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleLoadModels = useCallback(async () => {
     if (modelsLoaded) return;
-    setModelsStatus('loading');
     try {
-      const list = await fetchModels();
+      const res = await fetch('/models');
+      if (!res.ok) return;
+      const data = (await res.json()) as { models: string[] };
+      const list = data.models ?? [];
       setModels(list);
-      if (list.length > 0) {
-        setModelsStatus('ok');
-        setModelsLoaded(true);
-        const preferred = list.find(m => m.startsWith('llama3'));
-        if (preferred) setOllamaModel(preferred);
-      } else {
-        setModelsStatus('error');
-      }
-    } catch {
-      setModelsStatus('error');
-    }
+      setModelsLoaded(true);
+      const preferred = list.find((m) => m.startsWith('llama3'));
+      if (preferred) setOllamaModel(preferred);
+    } catch { /* ollama unavailable */ }
   }, [modelsLoaded]);
 
-  const handleOaiChange = useCallback((field: 'baseUrl' | 'apiKey' | 'model' | 'embedModel', v: string) => {
-    if (field === 'baseUrl')    setOaiBaseUrl(v);
-    if (field === 'apiKey')     setOaiApiKey(v);
-    if (field === 'model')      setOaiModel(v);
-    if (field === 'embedModel') setOaiEmbed(v);
-  }, []);
+  const handleOaiChange = useCallback(
+    (field: 'baseUrl' | 'apiKey' | 'model' | 'embedModel', v: string) => {
+      if (field === 'baseUrl')    setOaiBaseUrl(v);
+      if (field === 'apiKey')     setOaiApiKey(v);
+      if (field === 'model')      setOaiModel(v);
+      if (field === 'embedModel') setOaiEmbed(v);
+    },
+    [],
+  );
 
-  const handleSubmit = useCallback(async () => {
+  const buildLLMConfig = useCallback(() => {
+    const llmModel   = llmProvider === 'openai_compatible' ? oaiModel   : ollamaModel;
+    const embedModel = llmProvider === 'openai_compatible' ? oaiEmbed   : ollamaEmbed;
+    return {
+      enabled: llmEnabled,
+      ...(llmProvider !== 'ollama' ? { provider: llmProvider } : {}),
+      ...(llmEnabled && llmProvider === 'openai_compatible' && oaiBaseUrl ? { baseUrl: oaiBaseUrl } : {}),
+      ...(llmEnabled && oaiApiKey  ? { apiKey: oaiApiKey }    : {}),
+      ...(llmEnabled && llmModel   ? { model: llmModel }      : {}),
+      ...(llmEnabled && embedModel ? { embeddingModel: embedModel } : {}),
+    };
+  }, [llmEnabled, llmProvider, ollamaModel, ollamaEmbed, oaiBaseUrl, oaiApiKey, oaiModel, oaiEmbed]);
+
+  const handleRun = useCallback(async () => {
     if (!text.trim()) return;
-    setSubmitting(true);
+    setLoading(true);
     setError(null);
-
-    const llmModel = llmProvider === 'openai_compatible' ? oaiModel : ollamaModel;
-    const embedModel = llmProvider === 'openai_compatible' ? oaiEmbed : ollamaEmbed;
-
     try {
-      const res = await postTransform({
+      const r = await postTransform({
         text: text.trim(),
         language: lang,
         profile: 'neutralize_v1',
         strength,
-        llm: {
-          enabled: llmEnabled,
-          ...(llmProvider !== 'ollama'             ? { provider: llmProvider }        : {}),
-          ...(llmEnabled && llmProvider === 'openai_compatible' && oaiBaseUrl ? { baseUrl: oaiBaseUrl } : {}),
-          ...(llmEnabled && oaiApiKey              ? { apiKey: oaiApiKey }             : {}),
-          ...(llmEnabled && llmModel               ? { model: llmModel }               : {}),
-          ...(llmEnabled && embedModel             ? { embeddingModel: embedModel }    : {}),
-        },
+        llm: buildLLMConfig(),
       });
-      setResult(res);
-      setUsedModel(llmModel);
+      setResult(r);
+      setCurveData(null); // invalidate curve on new result
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
-  }, [text, lang, strength, llmEnabled, llmProvider, ollamaModel, ollamaEmbed, oaiBaseUrl, oaiApiKey, oaiModel, oaiEmbed]);
+  }, [text, lang, strength, buildLLMConfig]);
+
+  const handleComputeCurve = useCallback(async () => {
+    if (!text.trim()) return;
+    setComputingCurve(true);
+    try {
+      const results = await Promise.all(
+        ([0, 1, 2, 3] as Strength[]).map((s) =>
+          postTransform({
+            text: text.trim(),
+            language: lang,
+            profile: 'neutralize_v1',
+            strength: s,
+            llm: { enabled: false },
+          }),
+        ),
+      );
+      setCurveData(
+        results.map((r, i) => ({
+          strength: i as Strength,
+          sui: r.sui,
+          ssi: r.ssi,
+          delta: r.delta,
+        })),
+      );
+    } catch { /* leave curve null */ }
+    finally { setComputingCurve(false); }
+  }, [text, lang]);
 
   return (
-    <>
-      <header style={HEADER_CSS}>
-        <h1 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-.3px' }}>ContextBlur</h1>
-        <span style={TAG_CSS}>v0.1.0</span>
+    <div className={styles.root}>
+      <header className={styles.header}>
+        <div className={styles.headerLeft}>
+          <h1 className={styles.title}>Controlled Signal Degradation Lab</h1>
+          <p className={styles.subtitle}>
+            Experimental environment for stylometric and semantic signal manipulation.
+            Transformations are statistical proxies — not anonymity guarantees.
+          </p>
+        </div>
+        <ThreatModelDropdown />
       </header>
-      <main style={MAIN_CSS}>
+
+      <div className={styles.workspace}>
         <InputPanel
           text={text}
           lang={lang}
+          result={result}
+          onTextChange={setText}
+          onLangChange={setLang}
+        />
+
+        <CenterPanel
+          text={text}
           strength={strength}
+          heatmapMode={heatmapMode}
+          result={result}
+          loading={loading}
+          error={error}
           llmEnabled={llmEnabled}
           llmProvider={llmProvider}
+          models={models}
           ollamaModel={ollamaModel}
           ollamaEmbedModel={ollamaEmbed}
           oaiBaseUrl={oaiBaseUrl}
           oaiApiKey={oaiApiKey}
           oaiModel={oaiModel}
           oaiEmbedModel={oaiEmbed}
-          models={models}
-          modelsStatus={modelsStatus}
-          submitting={submitting}
-          onTextChange={setText}
-          onLangChange={setLang}
           onStrengthChange={setStrength}
+          onHeatmapModeChange={setHeatmapMode}
           onLLMEnabledChange={setLlmEnabled}
           onLLMProviderChange={setLlmProvider}
           onOllamaModelChange={setOllamaModel}
           onOllamaEmbedChange={setOllamaEmbed}
           onOaiChange={handleOaiChange}
           onLoadModels={handleLoadModels}
-          onSubmit={handleSubmit}
+          onRun={handleRun}
         />
-        <ResultsPanel result={result} error={error} strength={strength} llmModel={usedModel} />
-      </main>
-    </>
+
+        <FeatureDeltaPanel
+          result={result}
+          curveData={curveData}
+          computingCurve={computingCurve}
+          currentStrength={strength}
+          onComputeCurve={handleComputeCurve}
+          onStrengthSelect={setStrength}
+        />
+      </div>
+    </div>
   );
 }

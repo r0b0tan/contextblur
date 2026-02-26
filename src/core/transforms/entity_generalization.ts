@@ -1,4 +1,4 @@
-import type { Transform, Language } from '../types.js';
+import type { Transform, Language, TransformResult } from '../types.js';
 
 // Conservative heuristic entity generalization.
 // No NLP model. Uses: known org suffixes, curated city list, curated first-name list.
@@ -62,25 +62,38 @@ function escapeRegex(s: string): string {
 export const entityGeneralization: Transform = {
   name: 'entity_generalization',
 
-  apply(text: string, language: Language): string {
+  apply(text: string, language: Language): TransformResult {
+    const spans: TransformResult['spans'] = [];
     let result = text;
 
     // 1. Organizations: word(s) + recognized legal suffix
-    result = result.replace(ORG_SUFFIX_PATTERN, '[ORG]');
+    result = result.replace(ORG_SUFFIX_PATTERN, (match) => {
+      spans.push({ originalFragment: match, replacedWith: '[ORG]', transform: 'entity_generalization', strength: 1 });
+      return '[ORG]';
+    });
 
     // 2. Known cities (language-specific set)
     const cities = language === 'de' ? CITIES_DE : [...CITIES_DE, ...CITIES_EN];
     for (const city of cities) {
-      result = result.replace(new RegExp(`\\b${escapeRegex(city)}\\b`, 'g'), '[CITY]');
+      result = result.replace(new RegExp(`\\b${escapeRegex(city)}\\b`, 'g'), (match) => {
+        spans.push({ originalFragment: match, replacedWith: '[CITY]', transform: 'entity_generalization', strength: 1 });
+        return '[CITY]';
+      });
     }
 
     // 3. Full-name pattern: KnownFirstName + any capitalized word
     //    Applies only when first word is in FIRST_NAMES.
     result = result.replace(
       /\b([A-ZÜÖÄ][a-züöäßÄÖÜ]+)\s+([A-ZÜÖÄ][a-züöäßÄÖÜ]+)\b/g,
-      (match, first) => (FIRST_NAMES.has(first) ? '[PERSON]' : match),
+      (match, first) => {
+        if (FIRST_NAMES.has(first)) {
+          spans.push({ originalFragment: match, replacedWith: '[PERSON]', transform: 'entity_generalization', strength: 1 });
+          return '[PERSON]';
+        }
+        return match;
+      },
     );
 
-    return result;
+    return { text: result, spans };
   },
 };

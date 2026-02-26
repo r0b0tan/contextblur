@@ -4,8 +4,11 @@ import type {
   LLMClient,
   Language,
   LLMStatus,
+  SpanRecord,
+  AnnotatedSpan,
+  SignalType,
 } from './types.js';
-import { computeMetrics, computeDelta } from '../metrics/index.js';
+import { computeMetrics, computeDelta, computeSUI, computeSSI, computeRiskAnnotations } from '../metrics/index.js';
 import {
   syntaxNormalization,
   entityGeneralization,
@@ -27,6 +30,49 @@ const RARE_WEIGHT = 0.25;
 const TTR_WEIGHT = 0.20;
 const STDEV_WEIGHT = 0.30;
 // Sum: 0.25 + 0.25 + 0.20 + 0.30 = 1.00
+
+// ──────────────────────────────────────────────
+// Span resolution
+//
+// Transforms emit SpanRecord[] without absolute offsets (offsets shift as
+// subsequent transforms modify the text). After the full transform chain
+// completes, we scan finalText left-to-right matching each replacedWith token
+// in record order. Because all transforms process left-to-right and records
+// are appended in execution order, the sequential cursor produces correct
+// assignments in the vast majority of cases. Edge case: common replacement
+// words (e.g. "some", "many") that also appear as natural tokens may be
+// misattributed; this is a known PoC limitation of Option A offset resolution.
+// ──────────────────────────────────────────────
+
+const SIGNAL_TYPE_MAP: Record<string, SignalType> = {
+  syntax_normalization: 'structural',
+  entity_generalization: 'semantic',
+  numbers_bucketing: 'semantic',
+  context_dampening: 'contextual',
+  lexical_neutralization: 'lexical',
+};
+
+function resolveSpanOffsets(text: string, records: SpanRecord[]): AnnotatedSpan[] {
+  const spans: AnnotatedSpan[] = [];
+  let cursor = 0;
+
+  for (const record of records) {
+    const idx = text.indexOf(record.replacedWith, cursor);
+    if (idx === -1) continue;
+    spans.push({
+      start: idx,
+      end: idx + record.replacedWith.length,
+      originalFragment: record.originalFragment,
+      replacedWith: record.replacedWith,
+      transform: record.transform,
+      strength: record.strength,
+      signalType: SIGNAL_TYPE_MAP[record.transform] ?? 'structural',
+    });
+    cursor = idx + record.replacedWith.length;
+  }
+
+  return spans;
+}
 
 function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
@@ -201,26 +247,38 @@ export async function runPipeline(
   }
 
   const applied: string[] = [];
+  const allSpanRecords: SpanRecord[] = [];
   const metricsBefore = computeMetrics(text, language);
 
   // ── Deterministic transforms, cumulative by strength ──────────────────────
-  let current = syntaxNormalization.apply(text, language);
+  const syntaxResult = syntaxNormalization.apply(text, language);
+  let current = syntaxResult.text;
+  allSpanRecords.push(...syntaxResult.spans);
   applied.push(syntaxNormalization.name);
 
   if (strength >= 1) {
-    current = entityGeneralization.apply(current, language);
+    const entResult = entityGeneralization.apply(current, language);
+    current = entResult.text;
+    allSpanRecords.push(...entResult.spans);
     applied.push(entityGeneralization.name);
-    current = numbersBucketing.apply(current, language);
+
+    const numResult = numbersBucketing.apply(current, language);
+    current = numResult.text;
+    allSpanRecords.push(...numResult.spans);
     applied.push(numbersBucketing.name);
   }
 
   if (strength >= 2) {
-    current = contextDampening.apply(current, language);
+    const ctxResult = contextDampening.apply(current, language);
+    current = ctxResult.text;
+    allSpanRecords.push(...ctxResult.spans);
     applied.push(contextDampening.name);
   }
 
   if (strength >= 3) {
-    current = lexicalNeutralization.apply(current, language);
+    const lexResult = lexicalNeutralization.apply(current, language);
+    current = lexResult.text;
+    allSpanRecords.push(...lexResult.spans);
     applied.push(lexicalNeutralization.name);
   }
 
@@ -253,6 +311,10 @@ export async function runPipeline(
   const metricsAfter = computeMetrics(current, language);
   const delta = computeDelta(metricsBefore, metricsAfter);
   const uniquenessReductionScore = computeScore(metricsBefore, metricsAfter);
+  const sui = computeSUI(metricsBefore, metricsAfter);
+  const ssi = computeSSI(metricsBefore, metricsAfter);
+  const annotatedSpans = resolveSpanOffsets(current, allSpanRecords);
+  const riskAnnotations = computeRiskAnnotations(text, language);
 
   // ── Optional semantic similarity via embeddings ────────────────────────────
   // Computed when llm.embeddingModel is set and an OllamaClient is available.
@@ -277,6 +339,10 @@ export async function runPipeline(
     metricsAfter,
     delta,
     uniquenessReductionScore,
+    sui,
+    ssi,
+    annotatedSpans,
+    riskAnnotations,
     trace: { applied },
     llmStatus,
     ...(semanticSimilarity !== undefined && { semanticSimilarity }),

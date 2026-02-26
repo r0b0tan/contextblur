@@ -11,20 +11,20 @@ I believe we can sustain this performance. I presented yesterday in New York bef
 };
 
 export const STR_DESC: Record<Strength, { label: string; detail: string }> = {
-  0: { label: 'Syntax-Normalisierung', detail: 'Normalisiert Leerzeichen und Whitespace. Kaum sichtbare Änderungen.' },
-  1: { label: '+ Entitäten & Zahlen', detail: 'Ersetzt Städte → [CITY], Organisationen → [ORG], Personen → [PERSON], Zahlen → viele/einige, Daten → vor einiger Zeit.' },
-  2: { label: '+ Kontext-Dämpfung', detail: 'Reduziert wiederholte Ich-Pronomen (>2× in 200 Zeichen) → man/one. Entfernt redundante Diskursmarker (deshalb daher → deshalb).' },
-  3: { label: '+ Lexikalische Neutralisierung', detail: 'Ersetzt intensive Wertungen (phänomenal → gut, katastrophal → schlecht, außergewöhnlich → besonders).' },
+  0: { label: 'Syntax normalisation', detail: 'Collapses whitespace and punctuation clusters. Minimal surface changes.' },
+  1: { label: '+ Entity & number generalisation', detail: 'Cities → [CITY], organisations → [ORG], names → [PERSON]; integers → some/several/many; dates/years → timeAgo token.' },
+  2: { label: '+ Context dampening', detail: 'Reduces repeated first-person pronouns (>2× per 200 chars) → one/man. Collapses redundant discourse pairs (therefore thus → therefore).' },
+  3: { label: '+ Lexical neutralisation', detail: 'Replaces high-intensity evaluatives: phenomenal → good, catastrophic → bad, extraordinary → notable.' },
 };
 
 export const METRIC_LABELS: Record<string, string> = {
-  sentenceCount:             'Sätze',
-  avgSentenceLengthTokens:   'Ø Satzlänge',
-  stdevSentenceLengthTokens: 'σ Satzlänge',
-  punctuationRate:           'Interpunktionsrate',
+  sentenceCount:             'Sentences',
+  avgSentenceLengthTokens:   'Avg sentence length',
+  stdevSentenceLengthTokens: 'σ sentence length',
+  punctuationRate:           'Punctuation rate',
   typeTokenRatio:            'TTR',
-  hapaxRate:                 'Hapax-Rate',
-  stopwordRate:              'Stopwort-Rate',
-  rareWordRate:              'Seltenwort-Rate',
-  basicNgramUniqueness:      'N-Gramm-Einzigartigkeit',
+  hapaxRate:                 'Hapax rate',
+  stopwordRate:              'Stopword rate',
+  rareWordRate:              'Rare word rate',
+  basicNgramUniqueness:      'N-gram uniqueness',
 };

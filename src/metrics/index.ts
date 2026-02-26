@@ -1,4 +1,4 @@
-import type { Language, Metrics } from '../core/types.js';
+import type { Language, Metrics, IndexScores, RiskSpan } from '../core/types.js';
 import { getStopwords } from './stopwords.js';
 import { isRareWord } from './frequency.js';
 
@@ -104,6 +104,115 @@ export function computeMetrics(text: string, language: Language): Metrics {
     rareWordRate: r4(rareWordRate),
     basicNgramUniqueness: r4(basicNgramUniqueness),
   };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SUI — Stylometric Uniqueness Index
+// Formula version: sui-v1.0
+// Composite score [0–100] weighted over hapax, rare word, TTR, sentence stdev.
+// stdevSentenceLengthTokens is normalized by SUI_STDEV_NORM (empirical baseline).
+// ──────────────────────────────────────────────────────────────────────────────
+const SUI_FORMULA_VERSION = 'sui-v1.0';
+const SUI_STDEV_NORM = 10.0;
+const SUI_WEIGHTS = {
+  hapaxRate: 0.25,
+  rareWordRate: 0.25,
+  typeTokenRatio: 0.20,
+  stdevSentenceLengthTokens: 0.30,
+} as const;
+
+function suiValue(m: Metrics): number {
+  return (
+    SUI_WEIGHTS.hapaxRate * m.hapaxRate +
+    SUI_WEIGHTS.rareWordRate * m.rareWordRate +
+    SUI_WEIGHTS.typeTokenRatio * m.typeTokenRatio +
+    SUI_WEIGHTS.stdevSentenceLengthTokens *
+      Math.min(m.stdevSentenceLengthTokens / SUI_STDEV_NORM, 1)
+  );
+}
+
+export function computeSUI(before: Metrics, after: Metrics): IndexScores {
+  const valueBefore = Math.round(suiValue(before) * 10000) / 100;
+  const valueAfter = Math.round(suiValue(after) * 10000) / 100;
+  return {
+    formulaVersion: SUI_FORMULA_VERSION,
+    weights: { ...SUI_WEIGHTS, stdevNormFactor: SUI_STDEV_NORM },
+    valueBefore,
+    valueAfter,
+    delta: r4(valueBefore - valueAfter),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SSI — Semantic Specificity Index
+// Formula version: ssi-v1.0
+// Composite score [0–100] weighted over n-gram uniqueness, rare word rate,
+// and non-stopword rate (proxy for semantic content density).
+// ──────────────────────────────────────────────────────────────────────────────
+const SSI_FORMULA_VERSION = 'ssi-v1.0';
+const SSI_WEIGHTS = {
+  basicNgramUniqueness: 0.40,
+  rareWordRate: 0.35,
+  nonStopwordRate: 0.25,
+} as const;
+
+function ssiValue(m: Metrics): number {
+  return (
+    SSI_WEIGHTS.basicNgramUniqueness * m.basicNgramUniqueness +
+    SSI_WEIGHTS.rareWordRate * m.rareWordRate +
+    SSI_WEIGHTS.nonStopwordRate * (1 - m.stopwordRate)
+  );
+}
+
+export function computeSSI(before: Metrics, after: Metrics): IndexScores {
+  const valueBefore = Math.round(ssiValue(before) * 10000) / 100;
+  const valueAfter = Math.round(ssiValue(after) * 10000) / 100;
+  return {
+    formulaVersion: SSI_FORMULA_VERSION,
+    weights: { ...SSI_WEIGHTS },
+    valueBefore,
+    valueAfter,
+    delta: r4(valueBefore - valueAfter),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Risk annotations — computed on originalText before any transformation.
+// Identifies tokens with elevated stylometric load: hapax and/or rare words.
+// Stopwords are excluded (low distinctiveness by definition).
+// ──────────────────────────────────────────────────────────────────────────────
+export function computeRiskAnnotations(text: string, language: Language): RiskSpan[] {
+  // Scan word-boundary tokens (≥1 alpha chars) preserving character positions.
+  const wordRegex = /[a-zA-ZäöüßÄÖÜ]{2,}/g;
+  const positions: Array<{ start: number; end: number; word: string }> = [];
+  let match: RegExpExecArray | null;
+  while ((match = wordRegex.exec(text)) !== null) {
+    positions.push({ start: match.index, end: match.index + match[0].length, word: match[0].toLowerCase() });
+  }
+
+  // Frequency map over lowercased word forms
+  const freq = new Map<string, number>();
+  for (const pos of positions) freq.set(pos.word, (freq.get(pos.word) ?? 0) + 1);
+
+  const stopwords = getStopwords(language);
+  const spans: RiskSpan[] = [];
+
+  for (const pos of positions) {
+    if (stopwords.has(pos.word)) continue;
+
+    const isHapax = (freq.get(pos.word) ?? 0) === 1;
+    const isRare = isRareWord(pos.word, language);
+
+    if (isHapax && isRare) {
+      spans.push({ start: pos.start, end: pos.end, feature: 'hapax', riskLevel: 'high' });
+    } else if (isRare) {
+      spans.push({ start: pos.start, end: pos.end, feature: 'rare_word', riskLevel: 'high' });
+    } else if (isHapax) {
+      spans.push({ start: pos.start, end: pos.end, feature: 'hapax', riskLevel: 'medium' });
+    }
+  }
+
+  return spans;
 }
 
 export function computeDelta(before: Metrics, after: Metrics): Metrics {

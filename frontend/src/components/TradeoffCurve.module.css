@@ -1,0 +1,105 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.computeBtn {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.computeBtn:hover:not(:disabled) { color: var(--text-primary); }
+.computeBtn:disabled { opacity: 0.45; }
+
+.empty {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.svg {
+  display: block;
+  overflow: visible;
+}
+
+.axisLabel {
+  font-size: 9px;
+  fill: var(--text-tertiary);
+  font-family: var(--mono);
+}
+
+.legendLabel {
+  font-size: 9px;
+  fill: var(--text-secondary);
+  font-family: var(--mono);
+}
+
+.dotGroup { cursor: pointer; }
+.dotGroup:hover circle { opacity: 0.7; }
+
+.note {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* ── Feature Sensitivity ─────────────────────────────────────────────── */
+.sensitivity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.sensitivityLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+}
+
+.sensitivityRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sensitivityTransition {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-tertiary);
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.sensitivityMetric {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.sensitivityMag {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-mono);
+}

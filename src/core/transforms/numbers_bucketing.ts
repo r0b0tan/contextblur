@@ -1,4 +1,4 @@
-import type { Transform, Language } from '../types.js';
+import type { Transform, Language, TransformResult } from '../types.js';
 
 // Map cardinal numbers and temporal expressions to coarse buckets.
 // Goal: remove precise counts that are rare/identifying signals.
@@ -27,12 +27,31 @@ function bucket(n: number, labels: (typeof LABELS)['de' | 'en']): string {
 export const numbersBucketing: Transform = {
   name: 'numbers_bucketing',
 
-  apply(text: string, language: Language): string {
+  apply(text: string, language: Language): TransformResult {
+    const spans: TransformResult['spans'] = [];
     const labels = LABELS[language];
-    return text
-      .replace(DATE_ISO, labels.timeAgo)
-      .replace(DATE_EU, labels.timeAgo)
-      .replace(YEAR, labels.timeAgo)
-      .replace(INTEGER, (_, digits) => bucket(parseInt(digits, 10), labels));
+
+    let result = text.replace(DATE_ISO, (match) => {
+      spans.push({ originalFragment: match, replacedWith: labels.timeAgo, transform: 'numbers_bucketing', strength: 1 });
+      return labels.timeAgo;
+    });
+
+    result = result.replace(DATE_EU, (match) => {
+      spans.push({ originalFragment: match, replacedWith: labels.timeAgo, transform: 'numbers_bucketing', strength: 1 });
+      return labels.timeAgo;
+    });
+
+    result = result.replace(YEAR, (match) => {
+      spans.push({ originalFragment: match, replacedWith: labels.timeAgo, transform: 'numbers_bucketing', strength: 1 });
+      return labels.timeAgo;
+    });
+
+    result = result.replace(INTEGER, (match, digits) => {
+      const b = bucket(parseInt(digits, 10), labels);
+      spans.push({ originalFragment: match, replacedWith: b, transform: 'numbers_bucketing', strength: 1 });
+      return b;
+    });
+
+    return { text: result, spans };
   },
 };

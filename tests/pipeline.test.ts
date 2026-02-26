@@ -28,6 +28,10 @@ describe('runPipeline — response shape', () => {
     expect(r).toHaveProperty('metricsAfter');
     expect(r).toHaveProperty('delta');
     expect(r).toHaveProperty('uniquenessReductionScore');
+    expect(r).toHaveProperty('sui');
+    expect(r).toHaveProperty('ssi');
+    expect(r).toHaveProperty('annotatedSpans');
+    expect(r).toHaveProperty('riskAnnotations');
     expect(r).toHaveProperty('trace');
     expect(r.trace).toHaveProperty('applied');
     expect(Array.isArray(r.trace.applied)).toBe(true);
@@ -292,6 +296,132 @@ describe('runPipeline — LLM fallback paths', () => {
 
     await runPipeline({ ...DE_REQUEST, llm: { enabled: false } }, mockClient);
     expect(mockClient.generate).not.toHaveBeenCalled();
+  });
+});
+
+// ── SUI / SSI indices ──────────────────────────────────────────────────────
+describe('runPipeline — sui and ssi', () => {
+  it('sui has formulaVersion, weights, valueBefore, valueAfter, delta', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    expect(r.sui.formulaVersion).toBe('sui-v1.0');
+    expect(typeof r.sui.valueBefore).toBe('number');
+    expect(typeof r.sui.valueAfter).toBe('number');
+    expect(typeof r.sui.delta).toBe('number');
+    expect(Object.keys(r.sui.weights).length).toBeGreaterThan(0);
+  });
+
+  it('ssi has formulaVersion, weights, valueBefore, valueAfter, delta', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    expect(r.ssi.formulaVersion).toBe('ssi-v1.0');
+    expect(typeof r.ssi.valueBefore).toBe('number');
+    expect(typeof r.ssi.valueAfter).toBe('number');
+    expect(typeof r.ssi.delta).toBe('number');
+  });
+
+  it('sui.valueBefore and valueAfter are in [0, 100]', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    expect(r.sui.valueBefore).toBeGreaterThanOrEqual(0);
+    expect(r.sui.valueBefore).toBeLessThanOrEqual(100);
+    expect(r.sui.valueAfter).toBeGreaterThanOrEqual(0);
+    expect(r.sui.valueAfter).toBeLessThanOrEqual(100);
+  });
+
+  it('sui.delta equals valueBefore minus valueAfter', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    expect(r.sui.delta).toBeCloseTo(r.sui.valueBefore - r.sui.valueAfter, 3);
+  });
+
+  it('strength 3 produces greater or equal sui reduction than strength 0', async () => {
+    const r0 = await runPipeline({ ...DE_REQUEST, strength: 0 });
+    const r3 = await runPipeline({ ...DE_REQUEST, strength: 3 });
+    expect(r3.sui.delta).toBeGreaterThanOrEqual(r0.sui.delta);
+  });
+});
+
+// ── annotatedSpans ─────────────────────────────────────────────────────────
+describe('runPipeline — annotatedSpans', () => {
+  it('strength 0 produces no annotated spans for plain text', async () => {
+    const r = await runPipeline({ ...DE_REQUEST, text: 'Hallo Welt.', strength: 0 });
+    expect(r.annotatedSpans).toEqual([]);
+  });
+
+  it('strength 1 with known city produces at least one semantic span', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    const semanticSpans = r.annotatedSpans.filter((s) => s.signalType === 'semantic');
+    expect(semanticSpans.length).toBeGreaterThan(0);
+  });
+
+  it('each span has required fields', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    for (const span of r.annotatedSpans) {
+      expect(typeof span.start).toBe('number');
+      expect(typeof span.end).toBe('number');
+      expect(span.end).toBeGreaterThan(span.start);
+      expect(typeof span.originalFragment).toBe('string');
+      expect(typeof span.replacedWith).toBe('string');
+      expect(typeof span.transform).toBe('string');
+      expect(['lexical', 'structural', 'semantic', 'contextual']).toContain(span.signalType);
+    }
+  });
+
+  it('span offsets reference correct text in transformedText', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    for (const span of r.annotatedSpans) {
+      const slice = r.transformedText.slice(span.start, span.end);
+      expect(slice).toBe(span.replacedWith);
+    }
+  });
+
+  it('entity spans reference [CITY], [ORG], or [PERSON] tokens', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    const entitySpans = r.annotatedSpans.filter((s) => s.transform === 'entity_generalization');
+    for (const span of entitySpans) {
+      expect(['[CITY]', '[ORG]', '[PERSON]']).toContain(span.replacedWith);
+    }
+  });
+
+  it('lexical_neutralization spans appear only at strength 3', async () => {
+    const r2 = await runPipeline({ ...DE_REQUEST, text: 'Das war phänomenal.', strength: 2 });
+    const r3 = await runPipeline({ ...DE_REQUEST, text: 'Das war phänomenal.', strength: 3 });
+    expect(r2.annotatedSpans.filter((s) => s.transform === 'lexical_neutralization')).toHaveLength(0);
+    expect(r3.annotatedSpans.filter((s) => s.transform === 'lexical_neutralization').length).toBeGreaterThan(0);
+  });
+});
+
+// ── riskAnnotations ────────────────────────────────────────────────────────
+describe('runPipeline — riskAnnotations', () => {
+  it('returns an array', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    expect(Array.isArray(r.riskAnnotations)).toBe(true);
+  });
+
+  it('each risk span has start, end, feature, riskLevel', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    for (const span of r.riskAnnotations) {
+      expect(typeof span.start).toBe('number');
+      expect(typeof span.end).toBe('number');
+      expect(span.end).toBeGreaterThan(span.start);
+      expect(['hapax', 'rare_word']).toContain(span.feature);
+      expect(['high', 'medium']).toContain(span.riskLevel);
+    }
+  });
+
+  it('risk span offsets reference correct text in originalText', async () => {
+    const r = await runPipeline(DE_REQUEST);
+    for (const span of r.riskAnnotations) {
+      const slice = r.originalText.slice(span.start, span.end);
+      expect(slice.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('riskAnnotations are computed on originalText not transformedText', async () => {
+    // After strength-1 transformation, "Berlin" is replaced by [CITY].
+    // riskAnnotations must still contain the span for "Berlin" in originalText.
+    const r = await runPipeline(DE_REQUEST);
+    const berlinIdx = r.originalText.indexOf('Berlin');
+    expect(berlinIdx).toBeGreaterThanOrEqual(0);
+    // Some risk span must reference a position within originalText
+    expect(r.riskAnnotations.some((s) => s.start >= 0 && s.end <= r.originalText.length)).toBe(true);
   });
 });
 

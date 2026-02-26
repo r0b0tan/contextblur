@@ -1,6 +1,7 @@
 export type Language = 'de' | 'en';
 export type Profile = 'neutralize_v1';
 export type Strength = 0 | 1 | 2 | 3;
+export type SignalType = 'lexical' | 'structural' | 'semantic' | 'contextual';
 
 export type LLMProvider = 'ollama' | 'openai_compatible';
 
@@ -56,6 +57,13 @@ export interface TransformResponse {
   metricsAfter: Metrics;
   delta: MetricsDelta;
   uniquenessReductionScore: number;
+  // Versioned composite indices with weights exposed for reproducibility.
+  sui: IndexScores;
+  ssi: IndexScores;
+  // Per-span transform attribution in transformedText coordinates.
+  annotatedSpans: AnnotatedSpan[];
+  // Per-token risk assessment on originalText (signal load before transformation).
+  riskAnnotations: RiskSpan[];
   trace: { applied: string[] };
   llmStatus: LLMStatus;
   // Cosine similarity between embeddings of original and transformed text.
@@ -64,11 +72,55 @@ export interface TransformResponse {
   semanticSimilarity?: number;
 }
 
+// Emitted by each transform for each text replacement it makes.
+// Offsets are resolved post-pipeline against the final transformedText.
+export interface SpanRecord {
+  originalFragment: string;
+  replacedWith: string;
+  transform: string;
+  strength: Strength;
+}
+
+// Resolved span with character offsets into transformedText.
+export interface AnnotatedSpan {
+  start: number;
+  end: number;
+  originalFragment: string;
+  replacedWith: string;
+  transform: string;
+  strength: Strength;
+  signalType: SignalType;
+}
+
+// Risk annotation computed on originalText.
+// Identifies tokens with high stylometric load — potential targets for reduction.
+export interface RiskSpan {
+  start: number;
+  end: number;
+  feature: 'hapax' | 'rare_word';
+  riskLevel: 'high' | 'medium';
+}
+
+// Composite index with full provenance — formula version, weights, before/after values.
+export interface IndexScores {
+  formulaVersion: string;
+  weights: Record<string, number>;
+  valueBefore: number;
+  valueAfter: number;
+  delta: number;
+}
+
+// Return type for Transform.apply(). Replaces plain string.
+export interface TransformResult {
+  text: string;
+  spans: SpanRecord[];
+}
+
 // All transform modules implement this interface.
 // Must be pure functions — no I/O, no global state, no side effects.
 export interface Transform {
   name: string;
-  apply(text: string, language: Language): string;
+  apply(text: string, language: Language): TransformResult;
 }
 
 // Generic LLM adapter interface — mockable in tests.

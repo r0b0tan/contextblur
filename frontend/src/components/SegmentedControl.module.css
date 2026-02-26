@@ -1,26 +1,32 @@
 .seg {
   display: flex;
-  gap: 3px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .btn {
   flex: 1;
-  padding: 6px 2px;
-  border-radius: 5px;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  color: var(--muted);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all .15s;
-  font-family: inherit;
-  line-height: 1.3;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  background: var(--bg-inset);
+  border: none;
+  border-right: 1px solid var(--border-default);
+  font-size: 12px;
+  color: var(--text-secondary);
   gap: 1px;
 }
-.btn strong { font-size: 14px; font-weight: 700; }
-.btn span   { font-size: 9px; }
-.btn:hover  { border-color: var(--accent); color: var(--text); }
-.btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:last-child { border-right: none; }
+.btn span {
+  font-size: 9px;
+  color: var(--text-tertiary);
+}
+
+.active {
+  background: var(--accent-primary);
+  color: #fff;
+}
+.active span { color: rgba(255,255,255,0.7); }

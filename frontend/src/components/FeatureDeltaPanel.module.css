@@ -1,0 +1,156 @@
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.section { padding: 14px 16px; }
+
+.sectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+}
+
+.divider { height: 1px; background: var(--border-subtle); margin: 0 16px; }
+
+.empty {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ── Index rows (SUI / SSI) ──────────────────────────────────────────── */
+.indexRow {
+  margin-bottom: 10px;
+}
+
+.indexLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.indexBody {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.indexValues {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.indexBefore {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.indexArrow {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.indexAfter {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-mono);
+}
+
+.indexDelta {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.indexVersion {
+  font-size: 9px;
+  font-family: var(--mono);
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+/* ── Semantic similarity ─────────────────────────────────────────────── */
+.simRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+.simLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.simValue { font-family: var(--mono); font-size: 12px; color: var(--text-mono); }
+.simNote  { font-size: 10px; color: var(--text-tertiary); }
+
+/* ── Component deltas ────────────────────────────────────────────────── */
+.deltaList { display: flex; flex-direction: column; gap: 5px; }
+
+.deltaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.deltaLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.deltaValue {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* ── Signal ranking ──────────────────────────────────────────────────── */
+.rankList { display: flex; flex-direction: column; gap: 6px; }
+
+.rankRow {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.rankBar {
+  height: 4px;
+  background: var(--bg-inset);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.rankFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.rankMetric {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.rankDelta {
+  font-family: var(--mono);
+  font-size: 11px;
+  min-width: 52px;
+  text-align: right;
+}
