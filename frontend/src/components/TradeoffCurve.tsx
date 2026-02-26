@@ -155,7 +155,8 @@ function FeatureSensitivity({ data }: { data: CurvePoint[] }) {
     'stdevSentenceLengthTokens', 'basicNgramUniqueness',
   ];
 
-  const transitions = ([0, 1, 2] as const).map((s) => {
+  const transitions = ([0, 1, 2] as const).flatMap((s) => {
+    if (!data[s] || !data[s + 1]) return [];
     const from = data[s].delta;
     const to   = data[s + 1].delta;
     let maxMag = -Infinity;
@@ -164,7 +165,7 @@ function FeatureSensitivity({ data }: { data: CurvePoint[] }) {
       const mag = Math.abs((from[m] as number) - (to[m] as number));
       if (mag > maxMag) { maxMag = mag; dominant = m; }
     }
-    return { from: s, to: s + 1, dominant, magnitude: maxMag };
+    return [{ from: s, to: s + 1, dominant, magnitude: maxMag }];
   });
 
   return (

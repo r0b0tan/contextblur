@@ -148,15 +148,14 @@ export function CenterPanel({
             )}
           </button>
 
-          {result && (
+          {result && result.llmStatus !== 'skipped' && (
             <span
               className={`${styles.llmBadge} ${
                 result.llmStatus === 'failed_fallback' ? styles.llmBadgeFailed : ''
               }`}
             >
               {result.llmStatus === 'used'            && 'LLM used'}
-              {result.llmStatus === 'skipped'         && 'LLM skipped'}
-              {result.llmStatus === 'failed_fallback' && 'LLM failed — deterministic fallback applied'}
+              {result.llmStatus === 'failed_fallback' && 'LLM failed — check Ollama connection'}
             </span>
           )}
         </div>
