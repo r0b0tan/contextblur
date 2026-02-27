@@ -28,7 +28,7 @@
 .tooltip {
   position: fixed;
   z-index: 100;
-  width: 240px;
+  width: 280px;
   background: var(--bg-panel);
   border: 1px solid var(--border-default);
   border-radius: 6px;
@@ -39,6 +39,15 @@
   gap: 5px;
   pointer-events: none;
   animation: fadeIn 0.08s ease;
+}
+
+.tooltipChangeList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-top: 1px solid var(--border-default);
+  padding-top: 5px;
+  margin-top: 2px;
 }
 
 @keyframes fadeIn {

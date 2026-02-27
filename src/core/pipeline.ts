@@ -223,21 +223,71 @@ function extractFirstJson(raw: string): string | null {
   return null;
 }
 
-function parseLLMOutput(raw: string): string | null {
-  try {
-    // Strip markdown code fences (```json ... ``` or ``` ... ```)
-    // Models at temperature=0 often wrap JSON in code blocks.
-    const stripped = raw
-      .replace(/^```(?:json)?\s*/m, '')
-      .replace(/\s*```\s*$/m, '')
-      .trim();
-    const source = stripped.length > 0 ? stripped : raw;
+// Fallback extraction when JSON.parse fails (e.g. unescaped quotes in value).
+// Locates the transformedText value by structural position: first " after the
+// key colon, last " before the final }, without relying on valid JSON escaping.
+function directExtractTransformedText(json: string): string | null {
+  const keyIdx = json.indexOf('"transformedText"');
+  if (keyIdx === -1) return null;
+  const colonIdx = json.indexOf(':', keyIdx);
+  if (colonIdx === -1) return null;
 
-    const json = extractFirstJson(source);
-    if (!json) {
-      process.stderr.write(`[LLM] parse failed — no JSON object found. Raw (200): ${raw.slice(0, 200)}\n`);
-      return null;
+  let openQuote = colonIdx + 1;
+  while (openQuote < json.length && /\s/.test(json[openQuote])) openQuote++;
+  if (openQuote >= json.length || json[openQuote] !== '"') return null;
+  openQuote++; // skip opening "
+
+  const lastBrace = json.lastIndexOf('}');
+  if (lastBrace <= openQuote) return null;
+  let closeQuote = lastBrace - 1;
+  while (closeQuote > openQuote && /[\s,]/.test(json[closeQuote])) closeQuote--;
+  if (json[closeQuote] !== '"') return null;
+
+  const rawValue = json.slice(openQuote, closeQuote);
+
+  // Process standard JSON escape sequences left-to-right.
+  let out = '';
+  let i = 0;
+  while (i < rawValue.length) {
+    if (rawValue[i] === '\\' && i + 1 < rawValue.length) {
+      const next = rawValue[i + 1];
+      if      (next === 'n')  { out += '\n'; i += 2; }
+      else if (next === 't')  { out += '\t'; i += 2; }
+      else if (next === 'r')  { out += '\r'; i += 2; }
+      else if (next === '"')  { out += '"';  i += 2; }
+      else if (next === '\\') { out += '\\'; i += 2; }
+      else if (next === '/')  { out += '/';  i += 2; }
+      else if (next === 'b')  { out += '\b'; i += 2; }
+      else if (next === 'f')  { out += '\f'; i += 2; }
+      else if (next === 'u' && i + 5 <= rawValue.length) {
+        const hex = rawValue.slice(i + 2, i + 6);
+        if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+          out += String.fromCharCode(parseInt(hex, 16)); i += 6;
+        } else { out += '\\'; i++; }
+      } else { out += '\\' + next; i += 2; }
+    } else {
+      out += rawValue[i]; i++;
     }
+  }
+  return out;
+}
+
+function parseLLMOutput(raw: string): string | null {
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  // Models at temperature=0 often wrap JSON in code blocks.
+  const stripped = raw
+    .replace(/^```(?:json)?\s*/m, '')
+    .replace(/\s*```\s*$/m, '')
+    .trim();
+  const source = stripped.length > 0 ? stripped : raw;
+
+  const json = extractFirstJson(source);
+  if (!json) {
+    process.stderr.write(`[LLM] parse failed — no JSON object found. Raw (200): ${raw.slice(0, 200)}\n`);
+    return null;
+  }
+
+  try {
     const parsed = JSON.parse(sanitizeJsonControlChars(json)) as unknown;
     if (
       typeof parsed === 'object' &&
@@ -250,8 +300,12 @@ function parseLLMOutput(raw: string): string | null {
     process.stderr.write(`[LLM] parse failed — unexpected shape. Keys: ${Object.keys(parsed as object).join(', ')}\n`);
     return null;
   } catch (e) {
-    process.stderr.write(`[LLM] JSON.parse error: ${e instanceof Error ? e.message : String(e)}\n`);
-    return null;
+    process.stderr.write(`[LLM] JSON.parse error: ${e instanceof Error ? e.message : String(e)} — retrying with direct extraction\n`);
+    const fallback = directExtractTransformedText(json);
+    if (fallback === null) {
+      process.stderr.write(`[LLM] direct extraction also failed\n`);
+    }
+    return fallback;
   }
 }
 

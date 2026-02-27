@@ -3,10 +3,18 @@ import type { TransformResponse, AnnotatedSpan, RiskSpan, SignalType, Strength }
 import styles from './HeatmapView.module.css';
 
 // ── Diff span: positions in transformedText not covered by annotatedSpans ──
+interface SubSpan {
+  start: number;
+  end: number;
+  originalFragment: string;
+}
+
 interface DiffSpan {
   _kind: 'diff';
   start: number;
   end: number;
+  originalFragment: string; // first (or only) fragment
+  subSpans?: SubSpan[];     // populated when multiple raw spans were merged
 }
 
 type AnySpan = AnnotatedSpan | RiskSpan | DiffSpan;
@@ -30,18 +38,23 @@ function lcsDP(a: string[], b: string[]): number[][] {
   return dp;
 }
 
-// Backtrack LCS DP, emit only ops that consume b (transformed): 'equal' | 'insert'.
-// Length of result === b.length.
-function backtrackOps(dp: number[][], a: string[], b: string[]): Array<'equal' | 'insert'> {
-  const ops: Array<'equal' | 'insert'> = [];
+// Backtrack LCS DP, emitting all ops aligned to b (transformed).
+// 'delete' entries carry the original token but do NOT consume a b-slot;
+// 'equal' and 'insert' entries carry their b-token.
+type DiffOp =
+  | { op: 'equal' | 'insert'; tok: string }
+  | { op: 'delete'; tok: string };
+
+function backtrackFullOps(dp: number[][], a: string[], b: string[]): DiffOp[] {
+  const ops: DiffOp[] = [];
   let i = a.length, j = b.length;
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
-      ops.push('equal'); i--; j--;
+      ops.push({ op: 'equal', tok: b[j - 1] }); i--; j--;
     } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      ops.push('insert'); j--;
+      ops.push({ op: 'insert', tok: b[j - 1] }); j--;
     } else {
-      i--; // delete from orig — does not consume b token
+      ops.push({ op: 'delete', tok: a[i - 1] }); i--;
     }
   }
   return ops.reverse();
@@ -72,28 +85,43 @@ function wordDiffSpans(orig: string, trans: string, offset: number): DiffSpan[] 
   if (origToks.length > 800 || transToks.length > 800) return [];
 
   const dp  = lcsDP(origToks, transToks);
-  const ops = backtrackOps(dp, origToks, transToks);
+  const ops = backtrackFullOps(dp, origToks, transToks);
 
   const raw: DiffSpan[] = [];
-  let cursor    = offset;
-  let spanStart = -1;
+  let cursor       = offset;
+  let spanStart    = -1;
+  let pendingOrig  = ''; // accumulates deleted tokens preceding/during an insert cluster
 
-  for (let k = 0; k < ops.length; k++) {
-    const op      = ops[k];
-    const tok     = transToks[k];
+  for (const entry of ops) {
+    const { op } = entry;
+
+    if (op === 'delete') {
+      // Accumulate deleted orig tokens; no b-token consumed, cursor unchanged
+      pendingOrig += entry.tok;
+      continue;
+    }
+
+    const tok     = entry.tok;
     const isSpace = /^\s+$/.test(tok);
 
     if (op === 'insert' && !isSpace) {
       if (spanStart === -1) spanStart = cursor;
+      // pendingOrig already accumulating
     } else {
+      // 'equal' or whitespace insert — close any open span
       if (spanStart !== -1) {
-        raw.push({ _kind: 'diff', start: spanStart, end: cursor });
-        spanStart = -1;
+        raw.push({ _kind: 'diff', start: spanStart, end: cursor, originalFragment: pendingOrig.trim() });
+        spanStart   = -1;
+        pendingOrig = '';
+      } else {
+        pendingOrig = ''; // reset stale deletes between equal runs
       }
     }
     cursor += tok.length;
   }
-  if (spanStart !== -1) raw.push({ _kind: 'diff', start: spanStart, end: cursor });
+  if (spanStart !== -1) {
+    raw.push({ _kind: 'diff', start: spanStart, end: cursor, originalFragment: pendingOrig.trim() });
+  }
 
   return raw;
 }
@@ -129,6 +157,11 @@ function mergeNearby(spans: DiffSpan[], gap: number): DiffSpan[] {
   for (let i = 1; i < spans.length; i++) {
     const last = merged[merged.length - 1];
     if (spans[i].start - last.end <= gap) {
+      // First merge: promote `last` into subSpans before appending
+      if (!last.subSpans) {
+        last.subSpans = [{ start: last.start, end: last.end, originalFragment: last.originalFragment }];
+      }
+      last.subSpans.push({ start: spans[i].start, end: spans[i].end, originalFragment: spans[i].originalFragment });
       last.end = spans[i].end;
     } else {
       merged.push({ ...spans[i] });
@@ -320,14 +353,52 @@ function Tooltip({ tooltip, mode, result }: TooltipProps) {
 
   // Diff-only span
   if ('_kind' in span) {
+    const { subSpans } = span;
+
+    if (subSpans && subSpans.length > 1) {
+      const MAX = 6;
+      const shown = subSpans.slice(0, MAX);
+      const overflow = subSpans.length - MAX;
+      return (
+        <div className={styles.tooltip} style={{ left, top }}>
+          <div className={styles.tooltipBadge} data-signal="diff">
+            Modified &middot; {subSpans.length} changes
+          </div>
+          <div className={styles.tooltipChangeList}>
+            {shown.map((sub, i) => {
+              const subNew = result.transformedText.slice(sub.start, sub.end);
+              return (
+                <div key={i} className={styles.tooltipCause}>
+                  {sub.originalFragment
+                    ? <>&ldquo;{sub.originalFragment}&rdquo; &rarr; &ldquo;{subNew}&rdquo;</>
+                    : <>+ &ldquo;{subNew}&rdquo;</>
+                  }
+                </div>
+              );
+            })}
+            {overflow > 0 && (
+              <div className={styles.tooltipMeta}>… and {overflow} more</div>
+            )}
+          </div>
+          <div className={styles.tooltipMeta}>LLM or unlisted transform</div>
+        </div>
+      );
+    }
+
+    const newText = result.transformedText.slice(span.start, span.end);
     return (
       <div className={styles.tooltip} style={{ left, top }}>
         <div className={styles.tooltipBadge} data-signal="diff">
           Modified
         </div>
-        <div className={styles.tooltipMeta}>
-          Unannotated change — LLM or unlisted transform
-        </div>
+        {span.originalFragment ? (
+          <div className={styles.tooltipCause}>
+            &ldquo;{span.originalFragment}&rdquo; &rarr; &ldquo;{newText}&rdquo;
+          </div>
+        ) : (
+          <div className={styles.tooltipCause}>&ldquo;{newText}&rdquo;</div>
+        )}
+        <div className={styles.tooltipMeta}>LLM or unlisted transform</div>
       </div>
     );
   }

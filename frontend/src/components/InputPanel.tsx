@@ -23,6 +23,29 @@ function tokenCount(text: string): number {
   return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 }
 
+// Unescape JSON-style escape sequences that users sometimes paste from
+// API responses or JSON viewers (\n → newline, \" → ", \\ → \, etc.).
+// Only called when paste content contains a backslash.
+function unescapeJsonSequences(s: string): string {
+  if (!s.includes('\\')) return s;
+  let out = '';
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === '\\' && i + 1 < s.length) {
+      const next = s[i + 1];
+      if      (next === 'n')  { out += '\n'; i += 2; }
+      else if (next === 't')  { out += '\t'; i += 2; }
+      else if (next === 'r')  { out += '\r'; i += 2; }
+      else if (next === '"')  { out += '"';  i += 2; }
+      else if (next === '\\') { out += '\\'; i += 2; }
+      else                    { out += s[i]; i++;     } // unknown escape — keep as-is
+    } else {
+      out += s[i]; i++;
+    }
+  }
+  return out;
+}
+
 export function InputPanel({ text, lang, result, onTextChange, onLangChange }: Props) {
   const metrics = result?.metricsBefore ?? null;
   const tokens  = tokenCount(text);
@@ -47,6 +70,16 @@ export function InputPanel({ text, lang, result, onTextChange, onLangChange }: P
           className={styles.textarea}
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData('text');
+            const clean  = unescapeJsonSequences(pasted);
+            if (clean === pasted) return; // nothing to fix — let browser handle normally
+            e.preventDefault();
+            const el    = e.currentTarget;
+            const start = el.selectionStart ?? 0;
+            const end   = el.selectionEnd   ?? 0;
+            onTextChange(text.slice(0, start) + clean + text.slice(end));
+          }}
           placeholder={`Paste target text.\nEN or DE.`}
           rows={12}
         />
