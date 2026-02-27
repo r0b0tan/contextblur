@@ -299,6 +299,76 @@ describe('runPipeline — LLM fallback paths', () => {
   });
 });
 
+// ── parseLLMOutput — direct extraction fallback ────────────────────────────
+// Tests the directExtractTransformedText path triggered when JSON.parse fails.
+describe('runPipeline — LLM JSON repair fallback', () => {
+  it('recovers from unescaped double quotes inside transformedText', async () => {
+    // Simulates a model that outputs literal " instead of \" inside the JSON value.
+    // JSON.parse fails; directExtractTransformedText should succeed.
+    const badJson = '{"transformedText": "Er sagte "Hallo" zu ihr."}';
+    const mockClient: OllamaClient = {
+      generate: vi.fn().mockResolvedValue(badJson),
+      embed: vi.fn(),
+    };
+    const r = await runPipeline({ ...DE_REQUEST, llm: { enabled: true } }, mockClient);
+    expect(r.llmStatus).toBe('used');
+    expect(r.transformedText).toBe('Er sagte "Hallo" zu ihr.');
+  });
+
+  it('recovers from multiple unescaped quotes in value', async () => {
+    const badJson = '{"transformedText": "Eine "sehr" gute "Idee"."}';
+    const mockClient: OllamaClient = {
+      generate: vi.fn().mockResolvedValue(badJson),
+      embed: vi.fn(),
+    };
+    const r = await runPipeline({ ...DE_REQUEST, llm: { enabled: true } }, mockClient);
+    expect(r.llmStatus).toBe('used');
+    expect(r.transformedText).toBe('Eine "sehr" gute "Idee".');
+  });
+
+  it('still succeeds on well-formed JSON (no fallback needed)', async () => {
+    const goodJson = '{"transformedText": "Er sagte \\"Hallo\\" zu ihr."}';
+    const mockClient: OllamaClient = {
+      generate: vi.fn().mockResolvedValue(goodJson),
+      embed: vi.fn(),
+    };
+    const r = await runPipeline({ ...DE_REQUEST, llm: { enabled: true } }, mockClient);
+    expect(r.llmStatus).toBe('used');
+    expect(r.transformedText).toBe('Er sagte "Hallo" zu ihr.');
+  });
+
+  it('falls back to deterministic when no JSON object found at all', async () => {
+    const mockClient: OllamaClient = {
+      generate: vi.fn().mockResolvedValue('Kein JSON hier.'),
+      embed: vi.fn(),
+    };
+    const r = await runPipeline({ ...DE_REQUEST, llm: { enabled: true } }, mockClient);
+    expect(r.llmStatus).toBe('failed_fallback');
+  });
+
+  it('recovers from JSON wrapped in markdown code fence', async () => {
+    const fenced = '```json\n{"transformedText": "Eine Person arbeitete."}\n```';
+    const mockClient: OllamaClient = {
+      generate: vi.fn().mockResolvedValue(fenced),
+      embed: vi.fn(),
+    };
+    const r = await runPipeline({ ...DE_REQUEST, llm: { enabled: true } }, mockClient);
+    expect(r.llmStatus).toBe('used');
+    expect(r.transformedText).toBe('Eine Person arbeitete.');
+  });
+
+  it('handles transformedText containing } character', async () => {
+    const json = '{"transformedText": "Ergebnis: {ok}"}';
+    const mockClient: OllamaClient = {
+      generate: vi.fn().mockResolvedValue(json),
+      embed: vi.fn(),
+    };
+    const r = await runPipeline({ ...DE_REQUEST, llm: { enabled: true } }, mockClient);
+    expect(r.llmStatus).toBe('used');
+    expect(r.transformedText).toBe('Ergebnis: {ok}');
+  });
+});
+
 // ── SUI / SSI indices ──────────────────────────────────────────────────────
 describe('runPipeline — sui and ssi', () => {
   it('sui has formulaVersion, weights, valueBefore, valueAfter, delta', async () => {
