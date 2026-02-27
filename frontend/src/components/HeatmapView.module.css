@@ -63,16 +63,15 @@
 .tooltipBadge[data-signal="structural"] { background: rgba(245,158,11,0.12);  color: #B45309; }
 .tooltipBadge[data-signal="semantic"]   { background: rgba(139,92,246,0.12);  color: #7C3AED; }
 .tooltipBadge[data-signal="contextual"] { background: rgba(20,184,166,0.12);  color: #0F766E; }
-.tooltipBadge[data-signal="diff"]       { background: rgba(100,116,139,0.12); color: #475569; }
+.tooltipBadge[data-signal="diff"]       { background: rgba(250,204,21,0.20);  color: #78350F; }
 .tooltipBadge[data-risk="high"]         { background: rgba(239,68,68,0.12);   color: #B91C1C; }
 .tooltipBadge[data-risk="medium"]       { background: rgba(251,191,36,0.12);  color: #92400E; }
 
-/* Diff-detected change (LLM or unannotated transform) */
+/* Diff-detected change (LLM or unannotated transform) — yellow marker style */
 .markDiff {
-  background: rgba(100, 116, 139, 0.11);
+  background: rgba(250, 204, 21, 0.30);
   border-radius: 2px;
   padding: 0 1px;
-  border-bottom: 1.5px dashed rgba(100, 116, 139, 0.45);
   cursor: default;
 }
 

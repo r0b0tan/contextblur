@@ -47,23 +47,40 @@ function backtrackOps(dp: number[][], a: string[], b: string[]): Array<'equal' |
   return ops.reverse();
 }
 
-// Returns character spans in `transformed` where words differ from `original`,
-// with nearby spans merged to form cleaner segments (e.g. entire LLM sentences).
-function computeDiffSpans(original: string, transformed: string): DiffSpan[] {
-  const origToks = wordTokenize(original);
-  const transToks = wordTokenize(transformed);
-  if (origToks.length > 1500 || transToks.length > 1500) return [];
+// Split text into paragraphs (separated by \n\n+), returning each with its
+// start offset in the source string so callers can map spans back to full text.
+function paragraphRanges(text: string): Array<{ text: string; start: number }> {
+  const ranges: Array<{ text: string; start: number }> = [];
+  const re = /\n{2,}/g;
+  let lastEnd = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const para = text.slice(lastEnd, m.index);
+    if (para.trim().length > 0) ranges.push({ text: para, start: lastEnd });
+    lastEnd = m.index + m[0].length;
+  }
+  const last = text.slice(lastEnd);
+  if (last.trim().length > 0) ranges.push({ text: last, start: lastEnd });
+  return ranges;
+}
 
-  const dp   = lcsDP(origToks, transToks);
-  const ops  = backtrackOps(dp, origToks, transToks);
+// Word diff for a single paragraph, produces raw (un-merged) DiffSpans.
+// `offset` is the paragraph's start position in the full transformed text.
+function wordDiffSpans(orig: string, trans: string, offset: number): DiffSpan[] {
+  const origToks = wordTokenize(orig);
+  const transToks = wordTokenize(trans);
+  if (origToks.length > 800 || transToks.length > 800) return [];
+
+  const dp  = lcsDP(origToks, transToks);
+  const ops = backtrackOps(dp, origToks, transToks);
 
   const raw: DiffSpan[] = [];
-  let cursor    = 0;
+  let cursor    = offset;
   let spanStart = -1;
 
   for (let k = 0; k < ops.length; k++) {
-    const op  = ops[k];
-    const tok = transToks[k];
+    const op      = ops[k];
+    const tok     = transToks[k];
     const isSpace = /^\s+$/.test(tok);
 
     if (op === 'insert' && !isSpace) {
@@ -78,8 +95,32 @@ function computeDiffSpans(original: string, transformed: string): DiffSpan[] {
   }
   if (spanStart !== -1) raw.push({ _kind: 'diff', start: spanStart, end: cursor });
 
-  // Merge spans separated by ≤ 20 chars (whitespace between changed words)
-  return mergeNearby(raw, 20);
+  return raw;
+}
+
+// Paragraph-scoped diff: runs word diff independently per paragraph so common
+// words in different paragraphs are never incorrectly matched as equal.
+// Falls back to a single full-text diff for texts without paragraph breaks.
+function computeDiffSpans(original: string, transformed: string): DiffSpan[] {
+  const origParas = paragraphRanges(original);
+  const tranParas = paragraphRanges(transformed);
+
+  let all: DiffSpan[];
+
+  if (tranParas.length <= 1) {
+    // No paragraph breaks — single full-text diff
+    all = wordDiffSpans(original, transformed, 0);
+  } else {
+    all = [];
+    for (let i = 0; i < tranParas.length; i++) {
+      const tp       = tranParas[i];
+      const origText = i < origParas.length ? origParas[i].text : '';
+      all.push(...wordDiffSpans(origText, tp.text, tp.start));
+    }
+  }
+
+  // Merge spans separated by ≤ 20 chars (spaces between changed words)
+  return mergeNearby(all, 20);
 }
 
 function mergeNearby(spans: DiffSpan[], gap: number): DiffSpan[] {

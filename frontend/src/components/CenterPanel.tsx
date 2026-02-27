@@ -15,6 +15,7 @@ const SIGNAL_LEGEND = [
   { label: 'Structural', color: 'var(--signal-structural-dot)' },
   { label: 'Semantic',   color: 'var(--signal-semantic-dot)' },
   { label: 'Contextual', color: 'var(--signal-contextual-dot)' },
+  { label: 'Modified',   color: 'rgba(250, 204, 21, 0.85)' },
 ];
 
 interface Props {
