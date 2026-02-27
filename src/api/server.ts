@@ -16,7 +16,6 @@ export function buildServer() {
   app.register(fastifyStatic, {
     root: join(process.cwd(), 'public'),
     prefix: '/',
-    wildcard: false,
   });
 
   // SPA fallback: unmatched GETs serve index.html (React router compatibility)

@@ -180,6 +180,28 @@ function buildLLMPrompt(text: string, language: Language, strength: number): str
   ].join('\n');
 }
 
+// Escape bare control characters (ASCII 0x00–0x1F) that appear inside JSON
+// string literals. LLMs occasionally emit literal newlines/tabs inside a JSON
+// string value, which is spec-invalid and breaks JSON.parse.
+function sanitizeJsonControlChars(raw: string): string {
+  let inString = false;
+  let escape = false;
+  let out = '';
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    const code = raw.charCodeAt(i);
+    if (escape) { escape = false; out += ch; continue; }
+    if (ch === '\\' && inString) { escape = true; out += ch; continue; }
+    if (ch === '"') { inString = !inString; out += ch; continue; }
+    if (inString && code < 0x20) {
+      out += `\\u${code.toString(16).padStart(4, '0')}`;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
 // Extract the first balanced JSON object from raw LLM output.
 // Non-greedy regex fails when transformedText contains '}', so we scan
 // brace depth manually to find the correct closing bracket.
@@ -216,7 +238,7 @@ function parseLLMOutput(raw: string): string | null {
       process.stderr.write(`[LLM] parse failed — no JSON object found. Raw (200): ${raw.slice(0, 200)}\n`);
       return null;
     }
-    const parsed = JSON.parse(json) as unknown;
+    const parsed = JSON.parse(sanitizeJsonControlChars(json)) as unknown;
     if (
       typeof parsed === 'object' &&
       parsed !== null &&

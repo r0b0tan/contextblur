@@ -46,15 +46,23 @@ async function generateWithRetry(
   baseUrl: string,
   body: GenerateBody,
   retriesLeft: number,
+  attempt_n = 1,
 ): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const url = `${baseUrl}/api/generate`;
+
+  process.stderr.write(`[LLM] attempt ${attempt_n}/${MAX_RETRIES + 1} → ${url} (model: ${body.model})\n`);
 
   try {
-    return await attempt(`${baseUrl}/api/generate`, body, controller.signal);
+    const result = await attempt(url, body, controller.signal);
+    process.stderr.write(`[LLM] attempt ${attempt_n} succeeded\n`);
+    return result;
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`[LLM] attempt ${attempt_n} failed: ${msg}\n`);
     if (retriesLeft > 0) {
-      return generateWithRetry(baseUrl, body, retriesLeft - 1);
+      return generateWithRetry(baseUrl, body, retriesLeft - 1, attempt_n + 1);
     }
     throw err;
   } finally {
