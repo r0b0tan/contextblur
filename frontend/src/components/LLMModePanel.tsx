@@ -6,11 +6,13 @@ import { RunHistoryPanel } from './RunHistoryPanel';
 import type {
   RunModeOrBoth,
   RunMode,
+  EntityPolicy,
   LLMRunRequest,
   BatchResult,
   RunRecord,
   BackendRunRecord,
 } from '../features/transform/types';
+import { ENTITY_POLICY_LABELS } from '../features/transform/types';
 import type { Language } from '../types';
 import styles from './LLMModePanel.module.css';
 
@@ -31,9 +33,10 @@ export function LLMModePanel({ text, lang }: Props) {
   const [apiKey, setApiKey]   = useState('');
   const [model, setModel]     = useState('');
   const [maxTokens, setMaxTokens] = useState(2048);
-  const [mode, setMode]                 = useState<RunModeOrBoth>('both');
-  const [batchSize, setBatchSize]       = useState(5);
-  const [signalDef, setSignalDef]       = useState('');
+  const [mode, setMode]             = useState<RunModeOrBoth>('both');
+  const [entityPolicy, setEntityPolicy] = useState<EntityPolicy>('preserve_all');
+  const [batchSize, setBatchSize]   = useState(5);
+  const [signalDef, setSignalDef]   = useState('');
 
   // Results state
   const [loading, setLoading]           = useState(false);
@@ -69,6 +72,7 @@ export function LLMModePanel({ text, lang }: Props) {
         language: lang,
         signalDefinition: signalDef.trim() || undefined,
         mode,
+        entityPolicy,
         batchSize,
         baseUrl: baseUrl.trim(),
         model: model.trim(),
@@ -96,7 +100,7 @@ export function LLMModePanel({ text, lang }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [text, lang, baseUrl, apiKey, model, maxTokens, mode, batchSize, signalDef]);
+  }, [text, lang, baseUrl, apiKey, model, maxTokens, mode, entityPolicy, batchSize, signalDef]);
 
   const handleLoadFromHistory = useCallback((record: RunRecord) => {
     setLoadedRecord(record);
@@ -167,7 +171,7 @@ export function LLMModePanel({ text, lang }: Props) {
               />
             </div>
 
-            {/* Row 3: Mode + batch size + max tokens */}
+            {/* Row 3: Mode */}
             <div className={styles.configCell}>
               <label className={styles.configLabel}>Mode</label>
               <div className={styles.modeToggle}>
@@ -183,6 +187,23 @@ export function LLMModePanel({ text, lang }: Props) {
               </div>
             </div>
 
+            {/* Row 4: Entity Policy */}
+            <div className={styles.configFull}>
+              <label className={styles.configLabel}>Entity Policy</label>
+              <div className={styles.modeToggle}>
+                {(Object.keys(ENTITY_POLICY_LABELS) as EntityPolicy[]).map((p) => (
+                  <button
+                    key={p}
+                    className={`${styles.modeBtn} ${entityPolicy === p ? styles.modeBtnActive : ''}`}
+                    onClick={() => setEntityPolicy(p)}
+                  >
+                    {ENTITY_POLICY_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Row 5: Batch size + max tokens */}
             <div className={styles.configCell}>
               <label className={styles.configLabel}>
                 Batch size <span className={styles.dimNote}>(1–20 per mode)</span>
@@ -255,6 +276,7 @@ export function LLMModePanel({ text, lang }: Props) {
                       text: '',
                       language: lang,
                       mode: loadedRecord.mode,
+                      entityPolicy: loadedRecord.entity_policy,
                       batchSize: 1,
                       baseUrl: '',
                       model: loadedRecord.model_id,

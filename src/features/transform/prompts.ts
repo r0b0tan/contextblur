@@ -1,46 +1,98 @@
 import { createHash } from 'crypto';
 
-// ── Prompt version ──────────────────────────────────────────────────────────
-// Computed from the static template corpus so any template change automatically
-// produces a new version string for reproducibility tracking.
+// ── Entity policy ─────────────────────────────────────────────────────────
+export type EntityPolicy =
+  | 'preserve_all'
+  | 'pseudonymize_persons'
+  | 'pseudonymize_all_named_entities';
 
+export const ENTITY_POLICY_VALUES: EntityPolicy[] = [
+  'preserve_all',
+  'pseudonymize_persons',
+  'pseudonymize_all_named_entities',
+];
+
+// ── Signal definition default ─────────────────────────────────────────────
 export const DEFAULT_SIGNAL_DEFINITION =
   'hapax legomena (rare or unique words), unusual sentence-length variance, ' +
   'distinctive vocabulary patterns, and syntactic structures that could identify the author';
 
-// ── System prompt (constant across both modes) ────────────────────────────
+// ── System prompt (constant across all modes and policies) ────────────────
+// Defines the engine role, A/B axes, and the entity policy contract.
+// Entity policy details are provided per-request in the user message.
 export const SYSTEM_PROMPT =
-  'You are a controlled text transformation engine. ' +
-  'Your role is to transform input text to reduce stylometric and semantic ' +
-  'distinctiveness signals while preserving the core semantic content. ' +
-  'You must output ONLY strictly valid JSON conforming to the required schema. ' +
-  'Do not add any commentary, explanation, or text outside the JSON object. ' +
-  'Do not invent facts. ' +
-  'Do not introduce new named entities. ' +
-  'Do not ask clarifying questions. ' +
-  'The entire response must be a single JSON object.';
+  'You are an evaluation-grade controlled text transformation engine embedded in a research tool.\n' +
+  'Output ONLY strictly valid JSON. Never output any text outside the JSON object.\n' +
+  'Never add commentary, explanation, or ask clarifying questions.\n' +
+  'Never invent facts. Never introduce new named entities beyond pseudonyms required by entity policy.\n' +
+  '\n' +
+  'This system operates along two axes:\n' +
+  '- A (Attribution Reduction): reduce stylometric and semantic distinctiveness signals ' +
+  'that could identify the author.\n' +
+  '- B (Information Preservation): preserve the core semantic content and factual ' +
+  'accuracy of the text.\n' +
+  '\n' +
+  'Each user message specifies an entity_policy. You MUST follow it exactly:\n' +
+  '- preserve_all: do NOT modify any named entities (persons, organizations, locations).\n' +
+  '- pseudonymize_persons: replace person names with consistent pseudonyms; ' +
+  'leave all other named entities intact.\n' +
+  '- pseudonymize_all_named_entities: replace all named entities (persons, organizations, ' +
+  'locations) with consistent pseudonyms.\n' +
+  '\n' +
+  'Pseudonyms must be internally consistent within the response (same entity → same pseudonym).\n' +
+  'The entire response must be a single JSON object conforming to the schema in the user message.';
+
+// ── Entity policy instruction snippet ─────────────────────────────────────
+function entityPolicyInstruction(policy: EntityPolicy): string {
+  switch (policy) {
+    case 'preserve_all':
+      return (
+        'Entity policy (preserve_all): do NOT modify any named entities ' +
+        '(persons, organizations, locations). Keep all names exactly as they appear in the source.'
+      );
+    case 'pseudonymize_persons':
+      return (
+        'Entity policy (pseudonymize_persons): replace every person name with a consistent ' +
+        'pseudonym (e.g. "Person_A", "Person_B"). ' +
+        'Keep all organization and location names intact.'
+      );
+    case 'pseudonymize_all_named_entities':
+      return (
+        'Entity policy (pseudonymize_all_named_entities): replace every named entity ' +
+        '(person, organization, location) with a consistent pseudonym. ' +
+        'Use distinct placeholder prefixes per category ' +
+        '(e.g. "Person_A", "Org_B", "Location_C"). ' +
+        'Same entity → same pseudonym throughout.'
+      );
+  }
+}
 
 // ── User prompt: CONSTRAINED mode ─────────────────────────────────────────
-// Word-level substitutions only; sentence structure preserved.
+// Structural constraints: exact paragraph count, sentence count ±1 per paragraph,
+// headings and lists preserved. Word-level substitutions only.
 export function USER_PROMPT_CONSTRAINED(
   text: string,
   signalDefinition: string,
+  entityPolicy: EntityPolicy,
 ): string {
   return (
     'Transform the following text in CONSTRAINED mode.\n\n' +
     'CONSTRAINED mode rules (all mandatory):\n' +
-    '- Preserve the original sentence structure and paragraph organisation exactly.\n' +
-    '- Do NOT merge, split, reorder, or restructure sentences.\n' +
-    '- Make only word-level (lexical) substitutions.\n' +
+    '- Preserve the original paragraph count exactly.\n' +
+    '- Preserve sentence count to ±1 per paragraph.\n' +
+    '- Preserve all headings and list structures.\n' +
+    '- Make only word-level (lexical) substitutions; do NOT merge, split, or reorder sentences.\n' +
     '- Replace rare, distinctive, or highly specific words with common, neutral alternatives.\n' +
     '- Normalise vocabulary to average-frequency forms.\n' +
     `- Target signals to reduce: ${signalDefinition}\n\n` +
+    entityPolicyInstruction(entityPolicy) +
+    '\n\n' +
     'Return ONLY a single valid JSON object with this exact schema ' +
     '(no text before or after the JSON):\n' +
     '{\n' +
     '  "mode": "constrained",\n' +
     '  "input_summary": "<one-sentence summary of the input topic>",\n' +
-    '  "transformed_text": "<transformed text with word-level substitutions only>",\n' +
+    '  "transformed_text": "<transformed text — word-level substitutions only>",\n' +
     '  "self_check": {\n' +
     '    "meaning_preserved": <true or false>,\n' +
     '    "meaning_risk_notes": ["<describe any meaning-change risk, or empty array>"],\n' +
@@ -54,10 +106,11 @@ export function USER_PROMPT_CONSTRAINED(
 }
 
 // ── User prompt: UNCONSTRAINED mode ───────────────────────────────────────
-// Free restructuring, paraphrasing, sentence merging/splitting allowed.
+// Free restructuring; meaning and information preservation remain hard requirements.
 export function USER_PROMPT_UNCONSTRAINED(
   text: string,
   signalDefinition: string,
+  entityPolicy: EntityPolicy,
 ): string {
   return (
     'Transform the following text in UNCONSTRAINED mode.\n\n' +
@@ -67,7 +120,10 @@ export function USER_PROMPT_UNCONSTRAINED(
     '- You may change tone, voice, and style significantly.\n' +
     '- Prioritise reducing all distinctive surface signals over style consistency.\n' +
     '- Replace rare and characteristic vocabulary with common, neutral alternatives.\n' +
+    '- Meaning and information preservation remain hard requirements.\n' +
     `- Target signals to reduce: ${signalDefinition}\n\n` +
+    entityPolicyInstruction(entityPolicy) +
+    '\n\n' +
     'Return ONLY a single valid JSON object with this exact schema ' +
     '(no text before or after the JSON):\n' +
     '{\n' +
@@ -111,10 +167,19 @@ export function REPAIR_PROMPT(rawOutput: string): string {
 }
 
 // ── Prompt version (stable hash of template bodies) ───────────────────────
+// Uses preserve_all as the canonical policy placeholder for version computation.
 const TEMPLATE_CORPUS =
   SYSTEM_PROMPT +
-  USER_PROMPT_CONSTRAINED('__TEXT_PLACEHOLDER__', '__SIGNALS_PLACEHOLDER__') +
-  USER_PROMPT_UNCONSTRAINED('__TEXT_PLACEHOLDER__', '__SIGNALS_PLACEHOLDER__');
+  USER_PROMPT_CONSTRAINED(
+    '__TEXT_PLACEHOLDER__',
+    '__SIGNALS_PLACEHOLDER__',
+    'preserve_all',
+  ) +
+  USER_PROMPT_UNCONSTRAINED(
+    '__TEXT_PLACEHOLDER__',
+    '__SIGNALS_PLACEHOLDER__',
+    'preserve_all',
+  );
 
 export const PROMPT_VERSION = createHash('sha256')
   .update(TEMPLATE_CORPUS)

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { executeLLMRun } from '../../features/transform/runner.js';
 import type { Language } from '../../core/types.js';
+import type { EntityPolicy } from '../../features/transform/prompts.js';
 
 const REQUEST_SCHEMA = {
   type: 'object',
@@ -10,6 +11,10 @@ const REQUEST_SCHEMA = {
     language: { type: 'string', enum: ['de', 'en'] },
     signalDefinition: { type: 'string', maxLength: 2_000 },
     mode: { type: 'string', enum: ['constrained', 'unconstrained', 'both'] },
+    entityPolicy: {
+      type: 'string',
+      enum: ['preserve_all', 'pseudonymize_persons', 'pseudonymize_all_named_entities'],
+    },
     batchSize: { type: 'integer', minimum: 1, maximum: 20 },
     baseUrl: { type: 'string', minLength: 1, maxLength: 512 },
     model: { type: 'string', minLength: 1, maxLength: 128 },
@@ -23,6 +28,7 @@ interface LLMRunBody {
   language: Language;
   signalDefinition?: string;
   mode: 'constrained' | 'unconstrained' | 'both';
+  entityPolicy?: EntityPolicy;
   batchSize?: number;
   baseUrl: string;
   model: string;
@@ -40,6 +46,7 @@ export async function llmRunRoutes(app: FastifyInstance) {
         language,
         signalDefinition,
         mode,
+        entityPolicy = 'preserve_all',
         batchSize = 5,
         baseUrl,
         model,
@@ -52,6 +59,7 @@ export async function llmRunRoutes(app: FastifyInstance) {
         language,
         signalDefinition,
         mode,
+        entityPolicy,
         batchSize,
         baseUrl,
         model,

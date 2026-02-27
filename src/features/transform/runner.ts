@@ -7,6 +7,7 @@ import {
   REPAIR_PROMPT,
   PROMPT_VERSION,
   DEFAULT_SIGNAL_DEFINITION,
+  type EntityPolicy,
 } from './prompts.js';
 import { LLMOutputSchema, type LLMOutput } from './schema.js';
 import { computeMetrics } from '../../metrics/index.js';
@@ -20,6 +21,7 @@ export const FIXED_TOP_P = 1;
 export const DEFAULT_MAX_TOKENS = 2048;
 
 export type RunMode = 'constrained' | 'unconstrained';
+export type { EntityPolicy };
 
 export interface RunParams {
   temperature: typeof FIXED_TEMPERATURE;
@@ -30,6 +32,7 @@ export interface RunParams {
 export interface RunRecord {
   id: string;
   mode: RunMode;
+  entity_policy: EntityPolicy;
   input_hash: string;
   model_id: string;
   prompt_version: string;
@@ -56,6 +59,7 @@ export interface LLMRunRequest {
   language: Language;
   signalDefinition?: string;
   mode: RunMode | 'both';
+  entityPolicy: EntityPolicy;
   batchSize: number;
   baseUrl: string;
   model: string;
@@ -69,7 +73,7 @@ export interface LLMRunResponse {
   prompt_version: string;
 }
 
-// ── JSON extraction helpers (mirrors existing pipeline logic) ─────────────
+// ── JSON extraction helpers ───────────────────────────────────────────────
 
 function stripMarkdownFence(raw: string): string {
   return raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
@@ -137,6 +141,7 @@ async function executeSingleRun(
   text: string,
   language: Language,
   mode: RunMode,
+  entityPolicy: EntityPolicy,
   signalDefinition: string,
   baseUrl: string,
   model: string,
@@ -157,8 +162,8 @@ async function executeSingleRun(
   // uses a single messages[{role:'user'}] call without a separate system turn.
   const modePrompt =
     mode === 'constrained'
-      ? USER_PROMPT_CONSTRAINED(text, signalDefinition)
-      : USER_PROMPT_UNCONSTRAINED(text, signalDefinition);
+      ? USER_PROMPT_CONSTRAINED(text, signalDefinition, entityPolicy)
+      : USER_PROMPT_UNCONSTRAINED(text, signalDefinition, entityPolicy);
   const combinedPrompt = SYSTEM_PROMPT + '\n\n' + modePrompt;
 
   let raw_output = '';
@@ -197,6 +202,7 @@ async function executeSingleRun(
   return {
     id,
     mode,
+    entity_policy: entityPolicy,
     input_hash,
     model_id: model,
     prompt_version: PROMPT_VERSION,
@@ -281,6 +287,7 @@ export async function executeLLMRun(
   req: LLMRunRequest,
 ): Promise<LLMRunResponse> {
   const signalDefinition = req.signalDefinition?.trim() || DEFAULT_SIGNAL_DEFINITION;
+  const entityPolicy = req.entityPolicy;
   const model = req.model;
   const maxTokens = req.maxTokens || DEFAULT_MAX_TOKENS;
   const batchSize = Math.max(1, Math.min(req.batchSize, 20));
@@ -299,6 +306,7 @@ export async function executeLLMRun(
           req.text,
           req.language,
           mode,
+          entityPolicy,
           signalDefinition,
           req.baseUrl,
           model,
@@ -319,6 +327,7 @@ export async function executeLLMRun(
     return {
       id,
       mode,
+      entity_policy: entityPolicy,
       input_hash: createHash('sha256')
         .update(req.text)
         .digest('hex')

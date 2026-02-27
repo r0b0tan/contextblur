@@ -3,6 +3,17 @@ import type { Language, Metrics } from '../../types';
 export type RunMode = 'constrained' | 'unconstrained';
 export type RunModeOrBoth = RunMode | 'both';
 
+export type EntityPolicy =
+  | 'preserve_all'
+  | 'pseudonymize_persons'
+  | 'pseudonymize_all_named_entities';
+
+export const ENTITY_POLICY_LABELS: Record<EntityPolicy, string> = {
+  preserve_all: 'Preserve all',
+  pseudonymize_persons: 'Pseudonymize persons',
+  pseudonymize_all_named_entities: 'Pseudonymize all named entities',
+};
+
 export interface SelfCheck {
   meaning_preserved: boolean;
   meaning_risk_notes: string[];
@@ -27,6 +38,7 @@ export interface RunParams {
 export interface RunRecord {
   id: string;
   mode: RunMode;
+  entity_policy: EntityPolicy;
   batch_id: string;
   input_hash: string;
   model_id: string;
@@ -54,6 +66,7 @@ export interface LLMRunRequest {
   language: Language;
   signalDefinition?: string;
   mode: RunModeOrBoth;
+  entityPolicy: EntityPolicy;
   batchSize: number;
   baseUrl: string;
   model: string;
@@ -65,6 +78,7 @@ export interface LLMRunRequest {
 export interface BackendRunRecord {
   id: string;
   mode: RunMode;
+  entity_policy: EntityPolicy;
   input_hash: string;
   model_id: string;
   prompt_version: string;
