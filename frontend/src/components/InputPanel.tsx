@@ -31,7 +31,7 @@ export function InputPanel({ text, lang, result, onTextChange, onLangChange }: P
     <div className={styles.panel}>
 
       {/* ── Section: Input ───────────────────────────────────────────────── */}
-      <div className={styles.section}>
+      <div className={`${styles.section} ${styles.sectionInput}`}>
         <div className={styles.sectionHeader}>
           <span className={styles.sectionLabel}>INPUT</span>
           <button

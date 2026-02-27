@@ -41,11 +41,18 @@
 
 .workspace {
   display: grid;
-  grid-template-columns: 272px 1fr 296px;
+  grid-template-columns: 1fr 296px;
   gap: 12px;
   flex: 1;
   min-height: 0;
   padding: 12px;
+}
+
+.centerArea {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 12px;
+  min-height: 0;
 }
 
 /* ── Header right: tab nav + threat model dropdown ─────────────────── */

@@ -165,40 +165,42 @@ export default function App() {
       ) : null}
 
       <div className={styles.workspace} style={{ display: topTab === 'lab' ? undefined : 'none' }}>
-        <InputPanel
-          text={text}
-          lang={lang}
-          result={result}
-          onTextChange={setText}
-          onLangChange={setLang}
-        />
+        <div className={styles.centerArea}>
+          <InputPanel
+            text={text}
+            lang={lang}
+            result={result}
+            onTextChange={setText}
+            onLangChange={setLang}
+          />
 
-        <CenterPanel
-          text={text}
-          strength={strength}
-          heatmapMode={heatmapMode}
-          result={result}
-          loading={loading}
-          error={error}
-          llmEnabled={llmEnabled}
-          llmProvider={llmProvider}
-          models={models}
-          ollamaModel={ollamaModel}
-          ollamaEmbedModel={ollamaEmbed}
-          oaiBaseUrl={oaiBaseUrl}
-          oaiApiKey={oaiApiKey}
-          oaiModel={oaiModel}
-          oaiEmbedModel={oaiEmbed}
-          onStrengthChange={setStrength}
-          onHeatmapModeChange={setHeatmapMode}
-          onLLMEnabledChange={setLlmEnabled}
-          onLLMProviderChange={setLlmProvider}
-          onOllamaModelChange={setOllamaModel}
-          onOllamaEmbedChange={setOllamaEmbed}
-          onOaiChange={handleOaiChange}
-          onLoadModels={handleLoadModels}
-          onRun={handleRun}
-        />
+          <CenterPanel
+            text={text}
+            strength={strength}
+            heatmapMode={heatmapMode}
+            result={result}
+            loading={loading}
+            error={error}
+            llmEnabled={llmEnabled}
+            llmProvider={llmProvider}
+            models={models}
+            ollamaModel={ollamaModel}
+            ollamaEmbedModel={ollamaEmbed}
+            oaiBaseUrl={oaiBaseUrl}
+            oaiApiKey={oaiApiKey}
+            oaiModel={oaiModel}
+            oaiEmbedModel={oaiEmbed}
+            onStrengthChange={setStrength}
+            onHeatmapModeChange={setHeatmapMode}
+            onLLMEnabledChange={setLlmEnabled}
+            onLLMProviderChange={setLlmProvider}
+            onOllamaModelChange={setOllamaModel}
+            onOllamaEmbedChange={setOllamaEmbed}
+            onOaiChange={handleOaiChange}
+            onLoadModels={handleLoadModels}
+            onRun={handleRun}
+          />
+        </div>
 
         <FeatureDeltaPanel
           result={result}
