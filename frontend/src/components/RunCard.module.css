@@ -1,0 +1,197 @@
+.card {
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.valid { border-color: var(--border-default); }
+.invalid { border-color: rgba(220, 38, 38, 0.35); background: rgba(220, 38, 38, 0.03); }
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.index {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.status {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+.repairedBadge {
+  font-size: 10px;
+  background: rgba(217, 119, 6, 0.12);
+  color: #D97706;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.time {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.summary {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.transformedText {
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.selfCheck {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--bg-inset);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.checkRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checkLabel {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.checkValue {
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.noteList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.noteList ul {
+  padding-left: 14px;
+  margin: 2px 0 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.metricCell {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.metricLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+}
+
+.metricValue {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.failedBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.failedLabel {
+  color: var(--delta-negative);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.rawDetails {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.rawPre {
+  font-family: var(--mono);
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 6px;
+  margin-top: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-family: var(--mono);
+}

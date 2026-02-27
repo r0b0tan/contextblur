@@ -1,0 +1,125 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.statsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statsRow.twoCol {
+  flex-direction: row;
+  gap: 12px;
+}
+
+.statsPanel {
+  flex: 1;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.statsHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.modeLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+.successRate {
+  font-size: 11px;
+  color: var(--delta-positive);
+  font-weight: 600;
+}
+
+.repairedCount {
+  font-size: 10px;
+  color: #D97706;
+  background: rgba(217, 119, 6, 0.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.statsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.statsTable th {
+  text-align: left;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 4px 4px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.statsTable td {
+  padding: 3px 4px 3px 0;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.statsTable tr:last-child td { border-bottom: none; }
+
+.monoCell {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+.sideBySide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.modeColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.columnHeader {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+  padding: 4px 0;
+  border-bottom: 2px solid var(--accent-primary);
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.batchMeta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-family: var(--mono);
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}

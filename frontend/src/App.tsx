@@ -7,9 +7,13 @@ import { InputPanel } from './components/InputPanel';
 import { CenterPanel } from './components/CenterPanel';
 import { FeatureDeltaPanel } from './components/FeatureDeltaPanel';
 import { ThreatModelDropdown } from './components/ThreatModelDropdown';
+import { LLMModePanel } from './components/LLMModePanel';
 import styles from './App.module.css';
 
+type TopTab = 'lab' | 'llm_mode';
+
 export default function App() {
+  const [topTab, setTopTab] = useState<TopTab>('lab');
   // ── Input state ───────────────────────────────────────────────────────────
   const [text, setText]         = useState('');
   const [lang, setLang]         = useState<Language>('de');
@@ -135,10 +139,32 @@ export default function App() {
             Transformations are statistical proxies — not anonymity guarantees.
           </p>
         </div>
-        <ThreatModelDropdown />
+        <div className={styles.headerRight}>
+          <nav className={styles.topTabs}>
+            <button
+              className={`${styles.topTab} ${topTab === 'lab' ? styles.topTabActive : ''}`}
+              onClick={() => setTopTab('lab')}
+            >
+              Transform Lab
+            </button>
+            <button
+              className={`${styles.topTab} ${topTab === 'llm_mode' ? styles.topTabActive : ''}`}
+              onClick={() => setTopTab('llm_mode')}
+            >
+              LLM Mode
+            </button>
+          </nav>
+          <ThreatModelDropdown />
+        </div>
       </header>
 
-      <div className={styles.workspace}>
+      {topTab === 'llm_mode' ? (
+        <div className={styles.llmModeWrapper}>
+          <LLMModePanel text={text} lang={lang} />
+        </div>
+      ) : null}
+
+      <div className={styles.workspace} style={{ display: topTab === 'lab' ? undefined : 'none' }}>
         <InputPanel
           text={text}
           lang={lang}

@@ -47,3 +47,49 @@
   min-height: 0;
   padding: 12px;
 }
+
+/* ── Header right: tab nav + threat model dropdown ─────────────────── */
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.topTabs {
+  display: flex;
+  gap: 2px;
+  border: 1px solid var(--border-default);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg-inset);
+}
+
+.topTab {
+  padding: 5px 13px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+  white-space: nowrap;
+}
+
+.topTab:hover { color: var(--text-primary); background: var(--bg-canvas); }
+
+.topTabActive {
+  background: var(--accent-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.topTabActive:hover { background: var(--accent-primary); color: #fff; }
+
+/* ── LLM Mode full-page wrapper ─────────────────────────────────────── */
+.llmModeWrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}

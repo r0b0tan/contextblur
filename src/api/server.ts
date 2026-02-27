@@ -3,6 +3,7 @@ import fastifyStatic from '@fastify/static';
 import { join } from 'path';
 import { transformRoutes } from './routes/transform.js';
 import { modelsRoutes } from './routes/models.js';
+import { llmRunRoutes } from './routes/llm_run.js';
 
 export function buildServer() {
   // logger: false — no request logs that could contain input text (per ARCHITECTURE.md §9)
@@ -11,6 +12,7 @@ export function buildServer() {
   // ── API routes (registered first — take priority over static handler) ──────
   app.register(transformRoutes);
   app.register(modelsRoutes);
+  app.register(llmRunRoutes);
 
   // ── Static frontend (Vite build output in public/) ────────────────────────
   app.register(fastifyStatic, {
