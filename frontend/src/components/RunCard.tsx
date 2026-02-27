@@ -113,6 +113,7 @@ export function RunCard({ record, index }: Props) {
       <div className={styles.meta}>
         <span>model: {record.model_id}</span>
         <span>prompt: {record.prompt_version}</span>
+        <span>entity_policy: {record.entity_policy}</span>
         <span>temp: {record.params.temperature} / top_p: {record.params.top_p}</span>
         <span>id: {record.id.slice(0, 8)}</span>
       </div>
